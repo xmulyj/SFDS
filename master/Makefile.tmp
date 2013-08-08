@@ -1,0 +1,2 @@
+INCLUDE=-I/usr/include/easynet
+LIBS=-leasynet -lpthread -llog4cplus
