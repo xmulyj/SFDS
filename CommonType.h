@@ -17,19 +17,46 @@ using std::vector;
 //KVData的key
 #define KEY_PROTOCOL_TYPE 0
 
-//协议类型
-//文件信息
-#define PROTOCOL_FILE_INFO_REQ          0    //请求文件信息
-#define PROTOCOL_FILE_INFO              1    //文件信息
-#define PROTOCOL_FILE_INFO_SAVE_RESULT  2    //文件信息保存结果
-//文件数据
-#define PROTOCOL_FILE_REQ               3    //请求文件数据
-#define PROTOCOL_FILE                   4    //文件数据
-#define PROTOCOL_FILE_SAVE_RESULT       5    //文件保存状态
-//chunk信息
-#define PROTOCOL_CHUNK_PING             6    //chunk请求master保存chunk信息
-#define PROTOCOL_CHUNK_PING_RESP        7    //master回复chunk保存信息结果
 
+//协议类型
+
+typedef enum
+{
+PROTOCOL_BEGIN                  = 0,
+//文件信息
+PROTOCOL_FILE_INFO_REQ          = 1,    //请求文件信息
+PROTOCOL_FILE_INFO              = 2,    //文件信息
+PROTOCOL_FILE_INFO_SAVE_RESULT  = 3,    //文件信息保存结果
+//文件数据
+PROTOCOL_FILE_REQ               = 4,    //请求文件数据
+PROTOCOL_FILE                   = 5,    //文件数据
+PROTOCOL_FILE_SAVE_RESULT       = 6,    //文件保存状态
+//chunk信息
+PROTOCOL_CHUNK_PING             = 7,    //chunk请求master保存chunk信息
+PROTOCOL_CHUNK_PING_RESP        = 8,    //master回复chunk保存信息结果
+
+PROTOCOL_END                    = 9,
+}ProtocolType;
+
+
+//chunk的ping包信息
+class ChunkPing
+{
+public:
+	string id;               //chunk的id
+	string ip;               //chunk的ip
+	uint32_t port;           //chunk的端口
+	uint64_t disk_space;     //chunk的磁盘空间
+	uint64_t disk_used;      //chunk的磁盘已用空间
+};
+
+//chunk的ping包回复
+class ChunkPingRsp
+{
+public:
+	bool m_result;
+	string m_chunk_id;
+};
 
 //文件的chunk路径
 class ChunkPath
@@ -40,6 +67,13 @@ public:
 	uint32_t port;           //chunk的端口
 	uint32_t index;          //文件在chunk上的index号
 	uint32_t offset;         //文件在chunk上的偏移
+};
+
+class FileInfoReq
+{
+public:
+	string m_fid;             //文件的fid
+	bool m_query_chunkpath;   //如果没有文件信息,是否请求分配chunk
 };
 
 //文件信息
@@ -67,17 +101,6 @@ private:
 	vector<ChunkPath> chunk_paths;
 };
 
-//chunk信息
-class ChunkInfo
-{
-public:
-	string id;               //chunk的id
-	string ip;               //chunk的ip
-	uint32_t port;           //chunk的端口
-	uint64_t disk_space;     //chunk的磁盘空间
-	uint64_t disk_used;      //chunk的磁盘已用空间
-};
-
 class FileInfoSaveResult
 {
 public:
@@ -102,7 +125,7 @@ public:
 };
 
 //文件分片
-class FileSeg
+class File
 {
 public:
 	typedef enum

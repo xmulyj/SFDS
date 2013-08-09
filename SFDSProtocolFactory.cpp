@@ -9,6 +9,7 @@
 #include "KVData.h"
 #include "CommonType.h"
 #include <netinet/in.h>
+#include <new>
 
 IMPL_LOGGER(SFDSProtocolFactory, logger);
 
@@ -54,6 +55,15 @@ void SFDSProtocolFactory::EncodeHeader(char *buffer, uint32_t body_size)
 	return ;
 }
 
+#define Case_Create_Protocol(type, pro_type) case type: \
+	temp_protocol = m_Memory->Alloc(sizeof(pro_type));   \
+	temp_protocol = new(temp_protocol) pro_type;         \
+	break;
+
+#define Case_Delete_Protocol(type, pro_type) case type: \
+	m_Memory->Free(protocol, sizeof(pro_type)); \
+	break;
+
 DecodeResult SFDSProtocolFactory::DecodeBinBody(ProtocolContext *context)
 {
 	////Add Your Code Here
@@ -65,7 +75,26 @@ DecodeResult SFDSProtocolFactory::DecodeBinBody(ProtocolContext *context)
 	int32_t protocol_type;
 	if(kv_data.GetInt32(KEY_PROTOCOL_TYPE, protocol_type) == false)
 		return DECODE_ERROR;
+	if(protocol_type<=PROTOCOL_BEGIN || protocol_type>=PROTOCOL_END)
+		return DECODE_ERROR;
 
+	void *temp_protocol = NULL;    //不要修改该变量名,宏定义中使用
+	switch(protocol_type)
+	{
+	Case_Create_Protocol(PROTOCOL_CHUNK_PING, ChunkPing);
+	Case_Create_Protocol(PROTOCOL_CHUNK_PING_RESP, ChunkPingRsp);
+	Case_Create_Protocol(PROTOCOL_FILE_INFO_REQ, FileInfoReq);
+	Case_Create_Protocol(PROTOCOL_FILE_INFO, FileInfo);
+	Case_Create_Protocol(PROTOCOL_FILE_INFO_SAVE_RESULT, FileInfoSaveResult);
+	Case_Create_Protocol(PROTOCOL_FILE_REQ, FileReq);
+	Case_Create_Protocol(PROTOCOL_FILE, File);
+	Case_Create_Protocol(PROTOCOL_FILE_SAVE_RESULT, FileSaveResult);
+	default:
+		return DECODE_ERROR;
+	}
+
+	context->protocol = temp_protocol;
+	context->protocol_type = protocol_type;
 
 	return DECODE_SUCC;
 }
@@ -80,6 +109,17 @@ DecodeResult SFDSProtocolFactory::DecodeTextBody(ProtocolContext *context)
 void SFDSProtocolFactory::DeleteProtocol(uint32_t protocol_type, void *protocol)
 {
 	////Add Your Code Here
+	switch(protocol_type)
+	{
+	Case_Delete_Protocol(PROTOCOL_CHUNK_PING, ChunkPing);
+	Case_Delete_Protocol(PROTOCOL_CHUNK_PING_RESP, ChunkPingRsp);
+	Case_Delete_Protocol(PROTOCOL_FILE_INFO_REQ, FileInfoReq);
+	Case_Delete_Protocol(PROTOCOL_FILE_INFO, FileInfo);
+	Case_Delete_Protocol(PROTOCOL_FILE_INFO_SAVE_RESULT, FileInfoSaveResult);
+	Case_Delete_Protocol(PROTOCOL_FILE_REQ, FileReq);
+	Case_Delete_Protocol(PROTOCOL_FILE, File);
+	Case_Delete_Protocol(PROTOCOL_FILE_SAVE_RESULT, FileSaveResult);
+	}
 
 	return ;
 }

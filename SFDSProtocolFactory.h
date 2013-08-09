@@ -14,6 +14,10 @@ using namespace easynet;
 
 class SFDSProtocolFactory:public IProtocolFactory
 {
+public:
+	SFDSProtocolFactory(IMemory *memory):m_Memory(memory){}
+private:
+	IMemory *m_Memory;
 
 ////////////////////////////////////
 ////       实现基类接口         ////
