@@ -1,12 +1,12 @@
 /*
- * CommonType.h
+ * Protocol.h
  *
  *  Created on: 2012-12-29
  *      Author: LiuYongJin
  */
 
-#ifndef _COMMON_TYPE_H_
-#define _COMMON_TYPE_H_
+#ifndef _PROTOCOL_TYPE_H_
+#define _PROTOCOL_TYPE_H_
 
 #include <stdint.h>
 #include <string>
@@ -14,12 +14,7 @@
 using std::string;
 using std::vector;
 
-//KVData的key
-#define KEY_PROTOCOL_TYPE 0
-
-
 //协议类型
-
 typedef enum
 {
 PROTOCOL_BEGIN                  = 0,
@@ -40,22 +35,22 @@ PROTOCOL_END                    = 9,
 
 
 //chunk的ping包信息
-class ChunkPing
+class ChunkInfo
 {
 public:
 	string id;               //chunk的id
 	string ip;               //chunk的ip
-	uint32_t port;           //chunk的端口
-	uint64_t disk_space;     //chunk的磁盘空间
-	uint64_t disk_used;      //chunk的磁盘已用空间
+	int32_t port;            //chunk的端口
+	int64_t disk_space;      //chunk的磁盘空间
+	int64_t disk_used;       //chunk的磁盘已用空间
 };
 
 //chunk的ping包回复
 class ChunkPingRsp
 {
 public:
-	bool m_result;
-	string m_chunk_id;
+	int32_t result;   //0成功,1失败
+	string chunk_id;
 };
 
 //文件的chunk路径
@@ -72,8 +67,8 @@ public:
 class FileInfoReq
 {
 public:
-	string m_fid;             //文件的fid
-	bool m_query_chunkpath;   //如果没有文件信息,是否请求分配chunk
+	string fid;                //文件的fid
+	int32_t query_chunkpath;   //如果没有文件信息,是否请求分配chunk;0:不请求;1:请求
 };
 
 //文件信息
@@ -82,21 +77,21 @@ class FileInfo
 public:
 	typedef enum
 	{
-		RESULT_INVALID,   //无效
-		RESULT_FAILED,    //失败
-		RESULT_CHUNK,     //分配chunk,file_info的chunk_path有效
-		RESULT_SAVING,    //正在存储,file_info无
-		RESULT_SUCC       //成功,file_info有效
-	}Result;
+		RESULT_INVALID=0,   //无效
+		RESULT_FAILED,      //失败
+		RESULT_CHUNK,       //分配chunk,file_info的chunk_path有效
+		RESULT_SAVING,      //正在存储,file_info无
+		RESULT_SUCC         //成功,file_info有效
+	};
 
-	Result result;           //文件信息标志
+	int32_t result;          //文件信息标志
 	string fid;              //文件的fid
 	string name;             //文件名
 	uint32_t size;           //文件大小
 
-	int get_chunkpath_count(){return chunk_paths.size();}
-	void add_chunkpath(ChunkPath &chunk_path){chunk_paths.push_back(chunk_path);}
-	ChunkPath& get_chunkpath(int index){return chunk_paths[index];}
+	int GetChunkPathCount(){return chunk_paths.size();}
+	void AddChunkPath(ChunkPath &chunk_path){chunk_paths.push_back(chunk_path);}
+	ChunkPath& GetChunkPath(int index){return chunk_paths[index];}
 private:
 	vector<ChunkPath> chunk_paths;
 };
@@ -106,11 +101,11 @@ class FileInfoSaveResult
 public:
 	typedef enum
 	{
-		RESULT_FAILED,  //保存失败
-		RESULT_SUCC     //保存成功
-	}Result;
+		RESULT_FAILED =0,  //保存失败
+		RESULT_SUCC        //保存成功
+	};
 
-	Result result;
+	int32_t result;
 	string fid;
 };
 
@@ -173,5 +168,5 @@ public:
 	uint32_t index;          //分片index
 };
 
-#endif //_COMMON_TYPE_H_
+#endif //_PROTOCOL_TYPE_H_
 

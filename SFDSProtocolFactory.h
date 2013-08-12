@@ -29,7 +29,7 @@ public:
 	//从buffer中解码头部,并获取协议体数据.成功返回true,失败返回false.
 	DecodeResult DecodeHeader(const char *buffer, DataType &type, uint32_t &body_size);
 
-	//将头部数据编码写入到buffer.body_size为协议体大小
+	//将头部数据编码写入到buffer(大小不能小于HeaderSize的返回值).body_size为协议体大小
 	void EncodeHeader(char *buffer, uint32_t body_size);
 
 	//解码二进制协议体数据

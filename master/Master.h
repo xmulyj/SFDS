@@ -9,13 +9,27 @@
 #define _MASTER_H_
 
 #include "IAppInterface.h"
+#include "KVData.h"
 using namespace easynet;
 
 #include <string>
-using std::string;
+#include <map>
+#include <list>
+using namespace std;
+
 
 #include <mysql++.h>
 using namespace mysqlpp;
+
+#include "Protocol.h"
+
+
+class SavingFid
+{
+public:
+	int insert_time;
+	string fid;
+};
 
 //默认使用以下组件实例:
 //    EventServer     : EventServerEpoll
@@ -25,6 +39,10 @@ using namespace mysqlpp;
 //    IMemory         : SystemMemory
 class Master:public IAppInterface
 {
+public:
+	Master();
+	~Master();
+
 //////////////////////////////////////////////////////////////////
 //////////////////////////   接口方法   //////////////////////////
 //////////////////////////////////////////////////////////////////
@@ -67,6 +85,9 @@ public:
 	//socket需要结束时调用本接口
 	//  @param fd             : 需要结束的socket
 	void OnSocketFinished(int32_t fd);
+
+	//获取ProtocolFactory的实例
+	IProtocolFactory* GetProtocolFactory();
 private:
 	//数据库
 	string m_DBIP;
@@ -76,13 +97,31 @@ private:
 	string m_DBName;
 	Connection *m_DBConnection;
 
+	int32_t m_SendTimeout;
+	IProtocolFactory *m_ProtocolFactory;
 private:
 	//响应chunk的ping包
-	void OnChunkerPing(SocketHandle socket_handle, Protocol *protocol);
+	void OnChunkPing(int fd, KVData *kv_data);
 	//响应文件信息查询包
-	void OnFileInfoReq(SocketHandle socket_handle, Protocol *protocol);
+	void OnFileInfoReq(int fd, KVData *kv_data);
 	//响应chunk发送fileinfo保存包
-	void OnFileInfo(SocketHandle socket_handle, Protocol *protocol);
+	void OnFileInfoSave(int fd, KVData *kv_data);
+private:
+	map<string, ChunkInfo> m_ChunkManager;
+	bool AddChunk(ChunkInfo &chunkinfo);
+	bool DispatchChunk(ChunkInfo &chunkinfo);
+private:
+	uint32_t m_SavingTaskTimeoutSec;
+	map<string, FileInfo> m_FileInfoCache;
+	list<SavingFid> m_SavingFidList;
+	map<string, list<SavingFid>::iterator> m_SavingTaskMap;  //正在保存的任务
+	bool GetFileInfo(string &fid, FileInfo &fileinfo);
+	bool FindSavingTask(string &fid);
+	bool AddSavingTask(string &fid);
+	bool RemoveSavingTask(string &fid);
+	void RemoveSavingTaskTimeout();
+
+	bool DBSaveFileInfo(FileInfo &fileinfo);    //保存到数据库
 private:
 	DECL_LOGGER(logger);
 };
