@@ -170,6 +170,19 @@ IProtocolFactory* Master::GetProtocolFactory()
 }
 
 ////////////////////////////////////////////////////
+#define SerializeKVData(kvdata, send_context, info)  do{  \
+send_context = NewProtocolContext();  \
+assert(send_context != NULL);  \
+send_context->type = DTYPE_BIN;  \
+send_context->Info = info;  \
+uint32_t header_size = m_ProtocolFactory->HeaderSize();  \
+uint32_t body_size = kvdata.Size();  \
+send_context->CheckSize(header_size+body_size);  \
+m_ProtocolFactory->EncodeHeader(send_context->Buffer, body_size);  \
+send_kvdata.Serialize(send_context->Buffer+header_size);  \
+send_context->Size = header_size+body_size;  \
+}while(0)
+
 //响应chunk的ping包
 void Master::OnChunkPing(int fd, KVData *kv_data)
 {
@@ -216,23 +229,13 @@ void Master::OnChunkPing(int fd, KVData *kv_data)
 	}
 
 	//发送回复包
-	ProtocolContext *send_context = NewProtocolContext();
-	assert(send_context != NULL);
-	send_context->type = DTYPE_BIN;
-	send_context->Info = "ChunkResp";
+	KVData send_kvdata(true);
+	send_kvdata.SetValue(KEY_CHUNK_RSP_RESULT, chunkping_rsp.result);
+	send_kvdata.SetValue(KEY_CHUNK_RSP_CHUNK_ID, chunkping_rsp.chunk_id);
 
-	//预留头部
-	uint32_t header_size = m_ProtocolFactory->HeaderSize();
-	send_context->CheckSize(header_size);
-	send_context->Size = header_size; //预留协议头
-
-	//编码协议体
-	KVData::GetValue(KEY_CHUNK_RSP_RESULT, chunkping_rsp.result, send_context, true);
-	KVData::GetValue(KEY_CHUNK_RSP_CHUNK_ID, chunkping_rsp.chunk_id, send_context, true);
-
-	//编码头部
-	uint32_t body_size = send_context->Size-header_size;
-	m_ProtocolFactory->EncodeHeader(send_context->Buffer, body_size);
+	//序列化数据
+	ProtocolContext *send_context = NULL;
+	SerializeKVData(send_kvdata, send_context, "ChunkResp");
 
 	if(SendProtocol(fd, send_context, m_SendTimeout) == false)
 	{
@@ -318,41 +321,30 @@ void Master::OnFileInfoReq(int fd, KVData *kv_data)
 		}
 	}
 
-	//发送回包
-	ProtocolContext *send_context = NewProtocolContext();
-	assert(send_context != NULL);
-	send_context->type = DTYPE_BIN;
-	send_context->Info = "FileInfoResp";
-
-	//预留头部
-	uint32_t header_size = m_ProtocolFactory->HeaderSize();
-	send_context->CheckSize(header_size);
-	send_context->Size = header_size; //预留协议头
-
-	//编码协议体
+	//发送回复包
+	KVData send_kvdata(true);
 	//设置结果
-	KVData::GetValue(KEY_FILEINFO_RSP_RESULT, fileinfo.result, send_context, true);
+	send_kvdata.SetValue(KEY_FILEINFO_RSP_RESULT, fileinfo.result);
 	//设置文件名和大小
 	if(fileinfo.result == FileInfo::RESULT_SUCC)
 	{
-		KVData::GetValue(KEY_FILEINFO_RSP_FILE_NAME, fileinfo.name, send_context, true);
-		KVData::GetValue(KEY_FILEINFO_RSP_FILE_SIZE, fileinfo.size, send_context, true);
+		send_kvdata.SetValue(KEY_FILEINFO_RSP_FILE_NAME, fileinfo.name);
+		send_kvdata.SetValue(KEY_FILEINFO_RSP_FILE_SIZE, fileinfo.size);
 	}
 	//设置chunk path
 	if(fileinfo.result == FileInfo::RESULT_SUCC || fileinfo.result == FileInfo::RESULT_CHUNK)
 	{
 		int32_t chunk_count = fileinfo.GetChunkPathCount();
-		KVData::GetValue(KEY_FILEINFO_RSP_CHUNK_NUM, chunk_count, send_context, true);
-
+		send_kvdata.SetValue(KEY_FILEINFO_RSP_CHUNK_NUM, chunk_count);
 		for(int32_t i=0; i<chunk_count; ++i)
 		{
-
+			//todo
 		}
 	}
 
-	//编码协议头
-	uint32_t body_size = send_context->Size-header_size;
-	m_ProtocolFactory->EncodeHeader(send_context->Buffer, body_size);
+	//序列化数据
+	ProtocolContext *send_context = NULL;
+	SerializeKVData(send_kvdata, send_context, "FileInfoResp");
 
 	if(SendProtocol(fd, send_context, m_SendTimeout) == false)
 	{
@@ -456,24 +448,13 @@ void Master::OnFileInfoSave(int fd, KVData *kv_data)
 	}
 
 	//发送回复包
-	//发送回包
-	ProtocolContext *send_context = NewProtocolContext();
-	assert(send_context != NULL);
-	send_context->type = DTYPE_BIN;
-	send_context->Info = "FileInfoSaveResp";
+	KVData send_kvdata(true);
+	send_kvdata.SetValue(KEY_FILEINFO_SAVE_RSP_RESULT, saveresult.result);
+	send_kvdata.SetValue(KEY_FILEINFO_SAVE_RSP_FID, saveresult.fid);
 
-	//预留头部
-	uint32_t header_size = m_ProtocolFactory->HeaderSize();
-	send_context->CheckSize(header_size);
-	send_context->Size = header_size; //预留协议头
-
-	//编码协议体
-	KVData::GetValue(KEY_FILEINFO_SAVE_RSP_RESULT, saveresult.result, send_context, true);
-	KVData::GetValue(KEY_FILEINFO_SAVE_RSP_FID, saveresult.fid, send_context, true);
-
-	//编码协议头
-	uint32_t body_size = send_context->Size-header_size;
-	m_ProtocolFactory->EncodeHeader(send_context->Buffer, body_size);
+	//序列化数据
+	ProtocolContext *send_context = NULL;
+	SerializeKVData(send_kvdata, send_context, "FileInfoSaveResp");
 
 	if(SendProtocol(fd, send_context, m_SendTimeout) == false)
 	{
