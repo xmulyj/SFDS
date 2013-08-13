@@ -353,7 +353,7 @@ void Master::OnFileInfoReq(int fd, KVData *kv_data)
 			chunkpath_kvdata[i].SetValue(KEY_FILEINFO_RSP_CHUNK_INDEX, chunkpath.index);
 			chunkpath_kvdata[i].SetValue(KEY_FILEINFO_RSP_CHUNK_OFFSET, chunkpath.offset);
 			//设置子结构
-			send_kvdata.SetValue(KEY_FILEINFO_RSP_CHUNK_PATHS, KEY_FILEINFO_RSP_CHUNK_PATH0+i, &chunkpath_kvdata[i]);
+			send_kvdata.SetValue(KEY_FILEINFO_RSP_CHUNK_PATH0+i, &chunkpath_kvdata[i]);
 		}
 	}
 
