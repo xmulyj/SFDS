@@ -331,14 +331,29 @@ void Master::OnFileInfoReq(int fd, KVData *kv_data)
 		send_kvdata.SetValue(KEY_FILEINFO_RSP_FILE_NAME, fileinfo.name);
 		send_kvdata.SetValue(KEY_FILEINFO_RSP_FILE_SIZE, fileinfo.size);
 	}
+
+	KVData chunkpath_kvdata[3](true);
 	//设置chunk path
 	if(fileinfo.result == FileInfo::RESULT_SUCC || fileinfo.result == FileInfo::RESULT_CHUNK)
 	{
-		int32_t chunk_count = fileinfo.GetChunkPathCount();
-		send_kvdata.SetValue(KEY_FILEINFO_RSP_CHUNK_NUM, chunk_count);
-		for(int32_t i=0; i<chunk_count; ++i)
+		uint32_t chunkpath_count = 0;
+		chunkpath_count = fileinfo.GetChunkPathCount();
+		assert(chunkpath_count > 0);
+		if(chunkpath_count > 3)  //最多只有3个
+			chunkpath_count = 3;
+
+		send_kvdata.SetValue(KEY_FILEINFO_RSP_CHUNK_NUM, chunkpath_count);
+		for(int32_t i=0; i<chunkpath_count; ++i)
 		{
-			//todo
+			char buffer[1024];
+			ChunkPath &chunkpath = fileinfo.GetChunkPath(i);
+			chunkpath_kvdata[i].SetValue(KEY_FILEINFO_RSP_CHUNK_ID, chunkpath.id);
+			chunkpath_kvdata[i].SetValue(KEY_FILEINFO_RSP_CHUNK_IP, chunkpath.ip);
+			chunkpath_kvdata[i].SetValue(KEY_FILEINFO_RSP_CHUNK_PORT, chunkpath.port);
+			chunkpath_kvdata[i].SetValue(KEY_FILEINFO_RSP_CHUNK_INDEX, chunkpath.index);
+			chunkpath_kvdata[i].SetValue(KEY_FILEINFO_RSP_CHUNK_OFFSET, chunkpath.offset);
+			//设置子结构
+			send_kvdata.SetValue(KEY_FILEINFO_RSP_CHUNK_PATHS, KEY_FILEINFO_RSP_CHUNK_PATH0+i, &chunkpath_kvdata[i]);
 		}
 	}
 

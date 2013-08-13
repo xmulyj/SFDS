@@ -29,6 +29,18 @@ const uint16_t KEY_FILEINFO_RSP_RESULT         = 1;
 const uint16_t KEY_FILEINFO_RSP_FILE_NAME      = 2;
 const uint16_t KEY_FILEINFO_RSP_FILE_SIZE      = 3;
 const uint16_t KEY_FILEINFO_RSP_CHUNK_NUM      = 4;
+const uint16_t KEY_FILEINFO_RSP_CHUNK_PATHS    = 5;
+const uint16_t KEY_FILEINFO_RSP_CHUNK_PATH0    = 6;
+const uint16_t KEY_FILEINFO_RSP_CHUNK_PATH1    = 7;
+const uint16_t KEY_FILEINFO_RSP_CHUNK_PATH2    = 8;
+const uint16_t KEY_FILEINFO_RSP_CHUNK_PATH3    = 9;
+const uint16_t KEY_FILEINFO_RSP_CHUNK_PATH4    = 10;
+//预留
+const uint16_t KEY_FILEINFO_RSP_CHUNK_ID       = 20;
+const uint16_t KEY_FILEINFO_RSP_CHUNK_IP       = 21;
+const uint16_t KEY_FILEINFO_RSP_CHUNK_PORT     = 22;
+const uint16_t KEY_FILEINFO_RSP_CHUNK_INDEX    = 23;
+const uint16_t KEY_FILEINFO_RSP_CHUNK_OFFSET   = 24;
 
 //FileInfoSave
 const uint16_t KEY_FILEINFO_SAVE_RESULT        = 1;
