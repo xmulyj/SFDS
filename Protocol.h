@@ -75,7 +75,7 @@ public:
 class FileInfo
 {
 public:
-	typedef enum
+	enum
 	{
 		RESULT_INVALID=0,   //无效
 		RESULT_FAILED,      //失败
@@ -99,7 +99,7 @@ private:
 class FileInfoSaveResult
 {
 public:
-	typedef enum
+	enum
 	{
 		RESULT_FAILED =0,  //保存失败
 		RESULT_SUCC        //保存成功

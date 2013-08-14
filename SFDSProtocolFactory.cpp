@@ -65,10 +65,10 @@ DecodeResult SFDSProtocolFactory::DecodeBinBody(ProtocolContext *context)
 
 	void *temp = m_Memory->Alloc(sizeof(KVData));
 	assert(temp != NULL);
-	KVData *kv_data = new(temp) KVData;
+	KVData *kv_data = new(temp) KVData(true);
 
 	char *body_data = context->Buffer+HEADER_SIZE;
-	if(kv_data->UnPack(body_data, context->body_size, true) == false)
+	if(kv_data->UnSerialize(body_data, context->body_size) == false)
 	{
 		m_Memory->Free(temp, sizeof(KVData));
 		return DECODE_ERROR;

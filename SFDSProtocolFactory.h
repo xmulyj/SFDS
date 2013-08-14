@@ -33,7 +33,7 @@ public:
 	void EncodeHeader(char *buffer, uint32_t body_size);
 
 	//解码二进制协议体数据
-	virtual DecodeResult DecodeBinBody(ProtocolContext *context);
+	DecodeResult DecodeBinBody(ProtocolContext *context);
 
 	//解码文本协议体数据
 	DecodeResult DecodeTextBody(ProtocolContext *context);

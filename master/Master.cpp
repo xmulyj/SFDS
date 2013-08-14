@@ -95,7 +95,7 @@ int32_t Master::GetMaxConnections()
 bool Master::OnReceiveProtocol(int32_t fd, ProtocolContext *context, bool &detach_context)
 {
 	//Add Your Code Here
-	KVData *kv_data = context->protocol;
+	KVData *kv_data = (KVData*)context->protocol;
 	assert(kv_data != NULL);
 
 	int32_t protocol_type;
@@ -303,7 +303,7 @@ void Master::OnFileInfoReq(int fd, KVData *kv_data)
 				chunk_path.offset = 0; //无效
 				fileinfo.AddChunkPath(chunk_path);
 
-				AddSavingTask(fid);
+				AddSavingTask(fileinfo.fid);
 				LOG_DEBUG(logger, "OnFileInfoReq: dispatch chunk[id="<<chunk_info.id<<" ip="<<chunk_info.ip<<" port="<<chunk_info.port<<"] for fid="<<fid);
 
 				fileinfo.result = FileInfo::RESULT_CHUNK;
@@ -332,7 +332,11 @@ void Master::OnFileInfoReq(int fd, KVData *kv_data)
 		send_kvdata.SetValue(KEY_FILEINFO_RSP_FILE_SIZE, fileinfo.size);
 	}
 
-	KVData chunkpath_kvdata[3](true);
+	KVData chunkpath_kvdata[3];
+	chunkpath_kvdata[0].NetTrans(true);
+	chunkpath_kvdata[1].NetTrans(true);
+	chunkpath_kvdata[2].NetTrans(true);
+
 	//设置chunk path
 	if(fileinfo.result == FileInfo::RESULT_SUCC || fileinfo.result == FileInfo::RESULT_CHUNK)
 	{
