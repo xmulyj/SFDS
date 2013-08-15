@@ -7,12 +7,37 @@
 
 #include "ChunkInterface.h"
 
+//配置文件
+#include "ConfigReader.h"
+ConfigReader g_config_reader;
+const char config_path[] = "config/server.config";
+
 IMPL_LOGGER(ChunkInterface, logger);
 
 bool ChunkInterface::Start()
 {
 	//Add Your Code Here
-	
+	if(g_config_reader.Init(config_path) == false)
+		assert(0);
+
+	//创建线程
+	m_ChunkWorkerNum = g_config_reader.GetValue("ChunkWorkerNum", -1);
+	assert(m_ChunkWorkerNum > 0);
+	m_ChunkWorker = new ChunkWorker[m_ChunkWorkerNum](&g_config_reader);
+	m_CurThreadIndex = 0;
+	for(int i=0; i<m_ChunkWorkerNum; ++i)
+		(Thread*)(m_ChunkWorker+i)->StartThread();
+
+	//监听端口
+	int32_t chunk_port = g_config_reader.GetValue("ChunkPort", -1);
+	assert(chunk_port != -1);
+	int32_t fd = Listen(chunk_port);
+	assert(fd == true);
+	LOG_INFO(logger, "Chunk Server listen on port="<<chunk_port<<" succ.");
+
+	IEventServer *event_server = GetEventServer();
+	event_server->RunLoop();
+
 	return true;
 }
 
@@ -72,4 +97,12 @@ void ChunkInterface::OnSocketFinished(int32_t fd)
 	//Socket::Close(fd);
 
 	return ;
+}
+
+bool ChunkInterface::AcceptNewConnect(int32_t fd)
+{
+	LOG_INFO(logger, "send fd="<<fd<<" to Index="<<m_Index);
+	m_ChunkWorker[m_CurThreadIndex].SendMessage(fd);
+	m_CurThreadIndex = (m_CurThreadIndex+1)%2;
+	return true;
 }

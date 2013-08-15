@@ -6,13 +6,28 @@
  */
 
 #include "ChunkWorker.h"
+#include "SFDSProtocolFactory.h"
 
 IMPL_LOGGER(ChunkWorker, logger);
+
+ChunkWorker::ChunkWorker(ConfigReader *config):m_Config(config)
+{
+	m_ProtocolFactory = (IProtocolFactory*)new SFDSProtocolFactory(GetMemory());
+}
 
 bool ChunkWorker::Start()
 {
 	//Add Your Code Here
+	assert(m_Config != NULL);
 	
+	m_MasterIP = m_Config->GetValue("MasterIP", "");
+	assert(m_MasterIP.size() > 0);
+	m_MasterPort = m_Config->GetValue("MasterPort", -1);
+	assert(m_MasterPort > 0);
+	m_MasterSocket = -1;
+
+	IEventServer *event_server = GetEventServer();
+	event_server->RunLoop();
 	return true;
 }
 
@@ -72,4 +87,24 @@ void ChunkWorker::OnSocketFinished(int32_t fd)
 	//Socket::Close(fd);
 
 	return ;
+}
+
+
+/////////////////////////////////////////
+void ChunkWorker::DoRun()
+{
+	Start();
+}
+
+IProtocolFactory* ChunkWorker::GetProtocolFactory()
+{
+	return m_ProtocolFactory;
+}
+
+int32_t ChunkWorker::GetMasterConnect()
+{
+	if(m_MasterSocket == -1)
+		m_MasterSocket = Socket::Connect(m_MasterPort, m_MasterIP.c_str(), false);
+	assert(m_MasterSocket != -1);
+	return m_MasterSocket;
 }

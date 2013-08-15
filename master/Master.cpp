@@ -39,8 +39,8 @@ bool Master::Start()
 	int32_t master_port = g_config_reader->GetValue("MasterPort", -1);
 	assert(master_port != -1);
 
-	bool ret = Listen(master_port);
-	assert(ret == true);
+	int32_t fd = Listen(master_port);
+	assert(fd == true);
 	LOG_INFO(logger, "Master Server listen on port="<<master_port<<" succ.");
 
 	//数据库

@@ -11,6 +11,8 @@
 #include "IAppInterface.h"
 using namespace easynet;
 
+#include "ChunkWorker.h"
+
 //默认使用以下组件实例:
 //    EventServer     : EventServerEpoll
 //    ProtocolFactory : KVDataProtocolFactory
@@ -61,6 +63,13 @@ public:
 	//socket需要结束时调用本接口
 	//  @param fd             : 需要结束的socket
 	void OnSocketFinished(int32_t fd);
+
+	//重新基类方法
+	bool AcceptNewConnect(int32_t fd);
+private:
+	ChunkWorker *m_ChunkWorker;         //工作线程池
+	uint32_t m_ChunkWorkerNum;     //工作线程个数
+	uint32_t m_CurThreadIndex;     //新的链接分配的线程
 private:
 	DECL_LOGGER(logger);
 };

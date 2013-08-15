@@ -9,6 +9,8 @@
 #define _CHUNKWORKER_H_
 
 #include "IAppInterface.h"
+#include "Thread.h"
+#include "ConfigReader.h"
 using namespace easynet;
 
 //默认使用以下组件实例:
@@ -17,8 +19,10 @@ using namespace easynet;
 //    TransHandler    : TransHandler
 //    ListenHandler   : ListenHandler
 //    IMemory         : SystemMemory
-class ChunkWorker:public IAppInterface
+class ChunkWorker:public IAppInterface, public Thread
 {
+public:
+	ChunkWorker(ConfigReader *config);
 //////////////////////////////////////////////////////////////////
 //////////////////////////   接口方法   //////////////////////////
 //////////////////////////////////////////////////////////////////
@@ -61,6 +65,18 @@ public:
 	//socket需要结束时调用本接口
 	//  @param fd             : 需要结束的socket
 	void OnSocketFinished(int32_t fd);
+
+	//获取ProtocolFactory的实例
+	IProtocolFactory* GetProtocolFactory();
+private:
+	void DoRun();    //实现Thread类的接口方法
+private:
+	ConfigReader *m_Config; //配置文件
+
+	string m_MasterIP;
+	int32_t m_MasterPort;
+	int32_t m_MasterSocket;
+	int32_t GetMasterConnect();
 private:
 	DECL_LOGGER(logger);
 };
