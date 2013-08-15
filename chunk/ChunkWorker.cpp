@@ -50,6 +50,37 @@ bool ChunkWorker::OnReceiveProtocol(int32_t fd, ProtocolContext *context, bool &
 {
 	//Add Your Code Here
 	LOG_DEBUG(logger, "receive protocol on fd="<<fd);
+	KVData *kv_data = (KVData*)context->protocol;
+	assert(kv_data != NULL);
+
+	int32_t protocol_type;
+	if(kv_data->GetValue(KEY_PROTOCOL_TYPE, protocol_type) == false)
+	{
+		LOG_ERROR(logger, "recv_protocol:get protocol_type failed. fd="<<fd);
+		return false;
+	}
+	if(protocol_type<=(int32_t)PROTOCOL_BEGIN || protocol_type>=(int32_t)PROTOCOL_END)
+	{
+		LOG_ERROR(logger, "recv_protocol:protocol_type="<<protocol_type<<" invalid. fd="<<fd);
+		return false;
+	}
+	LOG_DEBUG(logger, "recv_protocol:get protocol_type="<<protocol_type<<" succ. fd="<<fd);
+
+	switch(protocol_type)
+	{
+	case PROTOCOL_FILE:  //响应client请求存储文件
+		OnSaveFile(fd, kv_data);
+		break;
+	case PROTOCOL_FILE_REQ:        //响应client请求获取文件
+		OnGetFile(fd, kv_data);
+		break;
+	case PROTOCOL_FILE_INFO_SAVE_RESULT:  //master回复保存文件信息结果
+		OnFileInfoSaveResult(fd, kv_data);
+		break;
+	default:
+		LOG_WARN(logger, "recv_protocol:un-expect protocol_type="<<protocol_tpe<<" and ignore it.");
+		break;
+	}
 	
 	return true;
 }
@@ -107,4 +138,19 @@ int32_t ChunkWorker::GetMasterConnect()
 		m_MasterSocket = Socket::Connect(m_MasterPort, m_MasterIP.c_str(), false);
 	assert(m_MasterSocket != -1);
 	return m_MasterSocket;
+}
+
+void OnSaveFile(int fd, KVData *kv_data)
+{
+
+}
+
+void OnGetFile(int fd, KVData *kv_data)
+{
+
+}
+
+void OnFileInfoSaveResult(int fd, KVData *kv_data)
+{
+
 }

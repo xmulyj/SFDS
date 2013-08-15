@@ -78,6 +78,11 @@ private:
 	int32_t m_MasterSocket;
 	int32_t GetMasterConnect();
 private:
+	void OnSaveFile(int fd, KVData *kv_data);
+	void OnFileInfoSaveResult(int fd, KVData *kv_data);
+	void OnGetFile(int fd, KVData *kv_data);
+
+private:
 	DECL_LOGGER(logger);
 };
 
