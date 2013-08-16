@@ -41,8 +41,8 @@ public:
 	string id;               //chunk的id
 	string ip;               //chunk的ip
 	int32_t port;            //chunk的端口
-	int64_t disk_space;      //chunk的磁盘空间
-	int64_t disk_used;       //chunk的磁盘已用空间
+	uint64_t disk_space;      //chunk的磁盘空间
+	uint64_t disk_used;       //chunk的磁盘已用空间
 };
 
 //chunk的ping包回复

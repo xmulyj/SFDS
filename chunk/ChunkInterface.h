@@ -19,8 +19,12 @@ using namespace easynet;
 //    TransHandler    : TransHandler
 //    ListenHandler   : ListenHandler
 //    IMemory         : SystemMemory
-class ChunkInterface:public IAppInterface
+class ChunkInterface:public IAppInterface, public IEventHandler
 {
+public:
+	ChunkInterface();
+	~ChunkInterface();
+
 //////////////////////////////////////////////////////////////////
 //////////////////////////   接口方法   //////////////////////////
 //////////////////////////////////////////////////////////////////
@@ -67,9 +71,21 @@ public:
 	//重新基类方法
 	bool AcceptNewConnect(int32_t fd);
 private:
+	//时钟超时
+	void OnTimeout(uint64_t nowtime_ms);
+	//错误事件
+	void OnEventError(int32_t fd, uint64_t nowtime_ms, ERROR_CODE code){}
+	//可读事件
+	ERROR_CODE OnEventRead(int32_t fd, uint64_t nowtime_ms){return ECODE_SUCC;}
+	//可写事件
+	ERROR_CODE OnEventWrite(int32_t fd, uint64_t nowtime_ms){return ECODE_SUCC;}
+private:
 	ChunkWorker *m_ChunkWorker;         //工作线程池
 	uint32_t m_ChunkWorkerNum;     //工作线程个数
 	uint32_t m_CurThreadIndex;     //新的链接分配的线程
+
+	int32_t m_MasterSocket;
+	IProtocolFactory *m_ProtocolFactory;
 private:
 	DECL_LOGGER(logger);
 };

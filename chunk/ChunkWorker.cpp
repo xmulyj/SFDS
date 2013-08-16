@@ -140,17 +140,17 @@ int32_t ChunkWorker::GetMasterConnect()
 	return m_MasterSocket;
 }
 
-void OnSaveFile(int fd, KVData *kv_data)
+void ChunkWorker::OnSaveFile(int fd, KVData *kv_data)
 {
 
 }
 
-void OnGetFile(int fd, KVData *kv_data)
+void ChunkWorker::OnGetFile(int fd, KVData *kv_data)
 {
 
 }
 
-void OnFileInfoSaveResult(int fd, KVData *kv_data)
+void ChunkWorker::OnFileInfoSaveResult(int fd, KVData *kv_data)
 {
 
 }
