@@ -146,7 +146,8 @@ void ChunkInterface::OnSocketFinished(int32_t fd)
 	LOG_INFO(logger, "socket finished. fd="<<fd);
 	
 	//close it?
-	//Socket::Close(fd);
+	Socket::Close(fd);
+	m_MasterSocket = -1;
 
 	return ;
 }
@@ -180,6 +181,12 @@ send_context->Size = header_size+body_size;  \
 void ChunkInterface::OnTimeout(uint64_t nowtime_ms)
 {
 	DiskMgr::GetInstance()->Update(); //更新磁盘信息
+
+	if(m_MasterSocket == -1)
+	{
+		LOG_ERROR(logger,"master_socket invalid...");
+		return ;
+	}
 
 	//发送ping包到master
 	ChunkInfo chunk_info;
