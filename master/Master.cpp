@@ -17,7 +17,7 @@ IMPL_LOGGER(Master, logger);
 //配置文件
 #include "ConfigReader.h"
 ConfigReader *g_config_reader = NULL;
-const char config_path[] = "config/server.config";
+const char config_path[] = "../config/server.config";
 
 Master::Master()
 {
@@ -40,7 +40,7 @@ bool Master::Start()
 	assert(master_port != -1);
 
 	int32_t fd = Listen(master_port);
-	assert(fd == true);
+	assert(fd > 0);
 	LOG_INFO(logger, "Master Server listen on port="<<master_port<<" succ.");
 
 	//数据库
@@ -123,7 +123,7 @@ bool Master::OnReceiveProtocol(int32_t fd, ProtocolContext *context, bool &detac
 		OnFileInfoSave(fd, kv_data);
 		break;
 	default:
-		LOG_WARN(logger, "recv_protocol:un-expect protocol_type="<<protocol_tpe<<" and ignore it.");
+		LOG_WARN(logger, "recv_protocol:un-expect protocol_type="<<protocol_type<<" and ignore it.");
 		break;
 	}
 	return true;
@@ -133,7 +133,7 @@ void Master::OnSendSucc(int32_t fd, ProtocolContext *context)
 {
 	//Add Your Code Here
 	LOG_DEBUG(logger, "send protocol succ on fd="<<fd<<", info='"<<context->Info<<"'");
-	
+	DeleteProtocolContext(context);
 	return ;
 }
 
@@ -141,7 +141,7 @@ void Master::OnSendError(int32_t fd, ProtocolContext *context)
 {
 	//Add Your Code Here
 	LOG_ERROR(logger, "send protocol failed on fd="<<fd<<", info='"<<context->Info<<"'");
-	
+	DeleteProtocolContext(context);
 	return ;
 }
 
@@ -149,7 +149,7 @@ void Master::OnSendTimeout(int32_t fd, ProtocolContext *context)
 {
 	//Add Your Code Here
 	LOG_WARN(logger, "send protocol timeout on fd="<<fd<<", info='"<<context->Info<<"'");
-	
+	DeleteProtocolContext(context);
 	return ;
 }
 
@@ -220,7 +220,7 @@ void Master::OnChunkPing(int fd, KVData *kv_data)
 	if(chunkping_rsp.result == 0)
 	{
 		LOG_INFO(logger, "OnChunkPing: get chunk info succ. chunk_id="<<chunkinfo.id
-				<<" chunk_ip="<<chunkinfo
+				<<" chunk_ip="<<chunkinfo.ip
 				<<" chunk_port="<<chunkinfo.port
 				<<" chunk_disk_space="<<chunkinfo.disk_space
 				<<" chunk_disk_used="<<chunkinfo.disk_used);
@@ -239,7 +239,7 @@ void Master::OnChunkPing(int fd, KVData *kv_data)
 
 	if(SendProtocol(fd, send_context, m_SendTimeout) == false)
 	{
-		LOG_ERROR(logger, "OnChunkPing: send chunk resp failed. chunk_id=<<"chunkping_rsp.chunk_id<<" fd="<<fd);
+		LOG_ERROR(logger, "OnChunkPing: send chunk resp failed. chunk_id="<<chunkping_rsp.chunk_id<<" fd="<<fd);
 		DeleteProtocolContext(send_context);
 	}
 }
@@ -304,19 +304,19 @@ void Master::OnFileInfoReq(int fd, KVData *kv_data)
 				fileinfo.AddChunkPath(chunk_path);
 
 				AddSavingTask(fileinfo.fid);
-				LOG_DEBUG(logger, "OnFileInfoReq: dispatch chunk[id="<<chunk_info.id<<" ip="<<chunk_info.ip<<" port="<<chunk_info.port<<"] for fid="<<fid);
+				LOG_DEBUG(logger, "OnFileInfoReq: dispatch chunk[id="<<chunk_info.id<<" ip="<<chunk_info.ip<<" port="<<chunk_info.port<<"] for fid="<<fileinfo.fid);
 
 				fileinfo.result = FileInfo::RESULT_CHUNK;
 			}
 			else
 			{
-				LOG_WARN(logger,"OnFileInfoReq: get chunk failed for fid="<<fid);
+				LOG_WARN(logger,"OnFileInfoReq: get chunk failed for fid="<<fileinfo.fid);
 				fileinfo.result = FileInfo::RESULT_FAILED;
 			}
 		}
 		else
 		{
-			LOG_WARN(logger, "OnFileInfoReq: get file_info failed for fid="<<fid);
+			LOG_WARN(logger, "OnFileInfoReq: get file_info failed for fid="<<fileinfo.fid);
 			fileinfo.result = FileInfo::RESULT_FAILED;
 		}
 	}
@@ -367,7 +367,7 @@ void Master::OnFileInfoReq(int fd, KVData *kv_data)
 
 	if(SendProtocol(fd, send_context, m_SendTimeout) == false)
 	{
-		LOG_ERROR(logger, "OnChunkPing: send chunk resp failed. chunk_id=<<"chunkping_rsp.chunk_id<<" fd="<<fd);
+		LOG_ERROR(logger, "OnFileInfoReq: send FileInfo resp failed. fid="<<fileinfo_req.fid<<" fd="<<fd);
 		DeleteProtocolContext(send_context);
 	}
 }
@@ -477,7 +477,7 @@ void Master::OnFileInfoSave(int fd, KVData *kv_data)
 
 	if(SendProtocol(fd, send_context, m_SendTimeout) == false)
 	{
-		LOG_ERROR(logger, "OnChunkPing: send chunk resp failed. chunk_id=<<"chunkping_rsp.chunk_id<<" fd="<<fd);
+		LOG_ERROR(logger, "OnFileInfo: send FileInfo resp failed. fid="<<saveresult.fid<<" fd="<<fd);
 		DeleteProtocolContext(send_context);
 	}
 }

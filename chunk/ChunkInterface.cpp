@@ -7,11 +7,15 @@
 
 #include "ChunkInterface.h"
 #include "SFDSProtocolFactory.h"
+#include "DiskMgr.h"
+#include "Socket.h"
+#include "KeyDefine.h"
 
 //配置文件
 #include "ConfigReader.h"
-ConfigReader g_config_reader;
-const char config_path[] = "config/server.config";
+using namespace easynet;
+ConfigReader *g_config_reader = NULL;
+const char config_path[] = "../config/server.config";
 
 IMPL_LOGGER(ChunkInterface, logger);
 
@@ -27,36 +31,39 @@ ChunkInterface::~ChunkInterface()
 bool ChunkInterface::Start()
 {
 	//Add Your Code Here
-	if(g_config_reader.Init(config_path) == false)
-		assert(0);
+	g_config_reader = new ConfigReader(config_path);
 
 	//初始化磁盘管理器
-	DiskMgr::GetInstance()->Init(&g_config_reader);
+	DiskMgr::GetInstance()->Init(g_config_reader);
 
 	//创建线程
-	m_ChunkWorkerNum = g_config_reader.GetValue("ChunkWorkerNum", -1);
+	m_ChunkWorkerNum = g_config_reader->GetValue("ChunkWorkerNum", -1);
 	assert(m_ChunkWorkerNum > 0);
-	m_ChunkWorker = new ChunkWorker[m_ChunkWorkerNum](&g_config_reader);
 	m_CurThreadIndex = 0;
 	for(int i=0; i<m_ChunkWorkerNum; ++i)
-		(Thread*)(m_ChunkWorker+i)->StartThread();
+	{
+		ChunkWorker *chunk_worker = new ChunkWorker(g_config_reader);
+		(Thread*)(chunk_worker)->StartThread();
+		m_ChunkWorkers.push_back(chunk_worker);
+	}
 
 	//监听端口
-	int32_t chunk_port = g_config_reader.GetValue("ChunkPort", -1);
+	int32_t chunk_port = g_config_reader->GetValue("ChunkPort", -1);
 	assert(chunk_port != -1);
 	int32_t fd = Listen(chunk_port);
-	assert(fd == true);
-	LOG_INFO(logger, "Chunk Server listen on port="<<chunk_port<<" succ.");
+	assert(fd > 0);
+	LOG_INFO(logger, "Chunk Server listen on port="<<chunk_port<<" succ. fd="<<fd);
 
 
 	//连接到master
-	string master_ip = g_config_reader.GetValue("MasterIP", "");
+	string master_ip = g_config_reader->GetValue("MasterIP", "");
 	assert(master_ip.size() > 0);
-	int32_t master_port = g_config_reader.GetValue("MasterPort", -1);
+	int32_t master_port = g_config_reader->GetValue("MasterPort", -1);
 	assert(master_port > 0);
 	m_MasterSocket = -1;
-	m_MasterSocket = Socket::Connect(master_port, master_ip.c_str(), false);
+	m_MasterSocket = Socket::Connect(master_port, master_ip.c_str(), false, 2000);
 	assert(m_MasterSocket > 0);
+	LOG_INFO(logger, "connect to master succ. master_ip="<<master_ip<<" master port="<<master_port<<" fd="<<m_MasterSocket);
 
 	IEventServer *event_server = GetEventServer();
 
@@ -76,7 +83,7 @@ int32_t ChunkInterface::GetSocketRecvTimeout()
 
 int32_t ChunkInterface::GetSocketIdleTimeout()
 {
-	return 3000;
+	return -1;
 }
 
 int32_t ChunkInterface::GetMaxConnections()
@@ -109,7 +116,7 @@ void ChunkInterface::OnSendSucc(int32_t fd, ProtocolContext *context)
 {
 	//Add Your Code Here
 	LOG_DEBUG(logger, "send protocol succ on fd="<<fd<<", info='"<<context->Info<<"'");
-	DeleteProtocolContext(send_context);
+	DeleteProtocolContext(context);
 	return ;
 }
 
@@ -117,7 +124,7 @@ void ChunkInterface::OnSendError(int32_t fd, ProtocolContext *context)
 {
 	//Add Your Code Here
 	LOG_ERROR(logger, "send protocol failed on fd="<<fd<<", info='"<<context->Info<<"'");
-	DeleteProtocolContext(send_context);
+	DeleteProtocolContext(context);
 	return ;
 }
 
@@ -125,7 +132,7 @@ void ChunkInterface::OnSendTimeout(int32_t fd, ProtocolContext *context)
 {
 	//Add Your Code Here
 	LOG_WARN(logger, "send protocol timeout on fd="<<fd<<", info='"<<context->Info<<"'");
-	DeleteProtocolContext(send_context);
+	DeleteProtocolContext(context);
 	return ;
 }
 
@@ -142,8 +149,8 @@ void ChunkInterface::OnSocketFinished(int32_t fd)
 
 bool ChunkInterface::AcceptNewConnect(int32_t fd)
 {
-	LOG_INFO(logger, "send fd="<<fd<<" to Index="<<m_Index);
-	m_ChunkWorker[m_CurThreadIndex].SendMessage(fd);
+	LOG_INFO(logger, "send fd="<<fd<<" to Index="<<m_CurThreadIndex);
+	m_ChunkWorkers[m_CurThreadIndex]->SendMessage(fd);
 	m_CurThreadIndex = (m_CurThreadIndex+1)%2;
 	return true;
 }
@@ -167,14 +174,15 @@ void ChunkInterface::OnTimeout(uint64_t nowtime_ms)
 
 	//发送ping包到master
 	ChunkInfo chunk_info;
-	chunk_info.id = g_config_reader.GetValue("ChunkID", ""); //chunk ID
-	chunk_info.ip = g_config_reader.GetValue("ChunkIP", ""); //chunk ip
-	chunk_info.port = g_config_reader.GetValue("ChunkPort", -1); //chunk端口
+	chunk_info.id = g_config_reader->GetValue("ChunkID", ""); //chunk ID
+	chunk_info.ip = g_config_reader->GetValue("ChunkIP", ""); //chunk ip
+	chunk_info.port = g_config_reader->GetValue("ChunkPort", -1); //chunk端口
 	assert(chunk_info.ip!="" && chunk_info.id!="" && chunk_info.port!=-1);
 	DiskMgr::GetInstance()->GetDiskSpace(chunk_info.disk_space, chunk_info.disk_used); //磁盘空间信息
 
 	//序列化
 	KVData send_kvdata(true);
+	send_kvdata.SetValue(KEY_PROTOCOL_TYPE, PROTOCOL_CHUNK_PING);
 	send_kvdata.SetValue(KEY_CHUNK_ID, chunk_info.id);
 	send_kvdata.SetValue(KEY_CHUNK_IP, chunk_info.ip);
 	send_kvdata.SetValue(KEY_CHUNK_PORT, chunk_info.port);
@@ -191,7 +199,7 @@ void ChunkInterface::OnTimeout(uint64_t nowtime_ms)
 	}
 	else
 	{
-		LOG_DEBUG(logger, "send chunk_ping to master succ. chunk_id="<<chunk_info.id
+		LOG_DEBUG(logger, "send chunk_ping data to framework succ. chunk_id="<<chunk_info.id
 			<<", chunk_ip="<<chunk_info.ip
 			<<", chunk_port="<<chunk_info.port
 			<<", disk_space="<<chunk_info.disk_space

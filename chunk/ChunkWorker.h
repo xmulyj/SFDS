@@ -10,6 +10,7 @@
 
 #include "IAppInterface.h"
 #include "Thread.h"
+#include "KVData.h"
 #include "ConfigReader.h"
 using namespace easynet;
 
@@ -72,6 +73,7 @@ private:
 	void DoRun();    //实现Thread类的接口方法
 private:
 	ConfigReader *m_Config; //配置文件
+	IProtocolFactory *m_ProtocolFactory;
 
 	string m_MasterIP;
 	int32_t m_MasterPort;

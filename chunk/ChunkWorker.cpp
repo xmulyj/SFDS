@@ -7,6 +7,9 @@
 
 #include "ChunkWorker.h"
 #include "SFDSProtocolFactory.h"
+#include "KeyDefine.h"
+#include "Protocol.h"
+#include "Socket.h"
 
 IMPL_LOGGER(ChunkWorker, logger);
 
@@ -78,7 +81,7 @@ bool ChunkWorker::OnReceiveProtocol(int32_t fd, ProtocolContext *context, bool &
 		OnFileInfoSaveResult(fd, kv_data);
 		break;
 	default:
-		LOG_WARN(logger, "recv_protocol:un-expect protocol_type="<<protocol_tpe<<" and ignore it.");
+		LOG_WARN(logger, "recv_protocol:un-expect protocol_type="<<protocol_type<<" and ignore it.");
 		break;
 	}
 	
@@ -89,7 +92,7 @@ void ChunkWorker::OnSendSucc(int32_t fd, ProtocolContext *context)
 {
 	//Add Your Code Here
 	LOG_DEBUG(logger, "send protocol succ on fd="<<fd<<", info='"<<context->Info<<"'");
-	
+	DeleteProtocolContext(context);
 	return ;
 }
 
@@ -97,7 +100,7 @@ void ChunkWorker::OnSendError(int32_t fd, ProtocolContext *context)
 {
 	//Add Your Code Here
 	LOG_ERROR(logger, "send protocol failed on fd="<<fd<<", info='"<<context->Info<<"'");
-	
+	DeleteProtocolContext(context);
 	return ;
 }
 
@@ -105,7 +108,7 @@ void ChunkWorker::OnSendTimeout(int32_t fd, ProtocolContext *context)
 {
 	//Add Your Code Here
 	LOG_WARN(logger, "send protocol timeout on fd="<<fd<<", info='"<<context->Info<<"'");
-	
+	DeleteProtocolContext(context);
 	return ;
 }
 
@@ -115,7 +118,7 @@ void ChunkWorker::OnSocketFinished(int32_t fd)
 	LOG_INFO(logger, "socket finished. fd="<<fd);
 	
 	//close it?
-	//Socket::Close(fd);
+	Socket::Close(fd);
 
 	return ;
 }

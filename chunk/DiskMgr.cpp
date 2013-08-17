@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <sys/statfs.h>
 
-IMPL_LOGGER(ChunkWorker, logger);
+IMPL_LOGGER(DiskMgr, logger);
 
 #define LOCK(lock) pthread_mutex_lock(&lock)
 #define UNLOCK(lock) pthread_mutex_unlock(&lock)
@@ -55,11 +55,12 @@ void DiskMgr::LoadDisk()
 	char pre_fix[3];
 	struct stat path_stat;
 
+	LOG_INFO(logger, "start to loaddisk="<<m_disk_path);
 	//目录不存在
 	if(stat(m_disk_path.c_str(), &path_stat)==-1 && errno==ENOENT)
 	{
-	int result = mkdir(m_disk_path.c_str(), S_IRWXU);
-	assert(result == 0);
+		int result = mkdir(m_disk_path.c_str(), S_IRWXU);
+		assert(result == 0);
 	}
 
 	//加载00,01,...,FF 256个子目录
@@ -95,7 +96,7 @@ void DiskMgr::LoadDisk()
 		DIR *dir;
 		if((dir=opendir(sub_dir.c_str())) == NULL)
 		{
-			LOG_ERROR(logger, "open dir error. sub_dir="<<sub_dir" error="<<strerror(errno));
+			LOG_ERROR(logger, "open dir error. sub_dir="<<sub_dir<<" error="<<strerror(errno));
 			continue;
 		}
 		while((ent=readdir(dir)) != NULL) //计算文件数
@@ -117,6 +118,8 @@ void DiskMgr::LoadDisk()
 		m_disk_files[i].index = index;
 		//LOG_DEBUG(logger, "load file succ. name="<<name<<" size="<<m_disk_files[i].cur_pos);
 	}
+
+	LOG_INFO(logger, "finished loaddisk...");
 }
 void DiskMgr::UnloadDisk()
 {

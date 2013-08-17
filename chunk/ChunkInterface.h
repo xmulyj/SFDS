@@ -11,6 +11,9 @@
 #include "IAppInterface.h"
 using namespace easynet;
 
+#include <vector>
+using std::vector;
+
 #include "ChunkWorker.h"
 
 //默认使用以下组件实例:
@@ -40,7 +43,6 @@ public:
 
 	//获取允许的最大链接数.
 	int32_t GetMaxConnections();
-
 
 	//处理收到的请求协议
 	//  @param fd             : 收到协议的socket
@@ -80,7 +82,7 @@ private:
 	//可写事件
 	ERROR_CODE OnEventWrite(int32_t fd, uint64_t nowtime_ms){return ECODE_SUCC;}
 private:
-	ChunkWorker *m_ChunkWorker;         //工作线程池
+	vector<ChunkWorker*> m_ChunkWorkers;         //工作线程池
 	uint32_t m_ChunkWorkerNum;     //工作线程个数
 	uint32_t m_CurThreadIndex;     //新的链接分配的线程
 

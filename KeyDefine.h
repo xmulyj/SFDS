@@ -56,7 +56,6 @@ const uint16_t KEY_FILEINFO_SAVE_RSP_RESULT    = 1;
 const uint16_t KEY_FILEINFO_SAVE_RSP_FID       = 2;
 
 //File
-const uint16_t PROTOCOL_SAVE_FILE
 #endif  //_KEY_DEFIE_H_
 
 
