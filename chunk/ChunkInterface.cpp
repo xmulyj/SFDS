@@ -23,6 +23,7 @@ ChunkInterface::ChunkInterface()
 {
 	m_ProtocolFactory = (IProtocolFactory*)new SFDSProtocolFactory(GetMemory());
 }
+
 ChunkInterface::~ChunkInterface()
 {
 	delete m_ProtocolFactory;
@@ -54,7 +55,6 @@ bool ChunkInterface::Start()
 	assert(fd > 0);
 	LOG_INFO(logger, "Chunk Server listen on port="<<chunk_port<<" succ. fd="<<fd);
 
-
 	//连接到master
 	string master_ip = g_config_reader->GetValue("MasterIP", "");
 	assert(master_ip.size() > 0);
@@ -66,6 +66,10 @@ bool ChunkInterface::Start()
 	LOG_INFO(logger, "connect to master succ. master_ip="<<master_ip<<" master port="<<master_port<<" fd="<<m_MasterSocket);
 
 	IEventServer *event_server = GetEventServer();
+	IEventHandler *trans_handler = GetTransHandler();
+	int32_t timeous_ms = GetSocketIdleTimeout();
+	if(event_server->SetEvent(m_MasterSocket, ET_PER_RD, trans_handler, timeous_ms) == false)
+		assert(0);
 
 	//注册定时发送ping包时钟
 	if(event_server->AddTimer(this, 1000, true) == false)
@@ -102,7 +106,7 @@ bool ChunkInterface::OnReceiveProtocol(int32_t fd, ProtocolContext *context, boo
 		LOG_ERROR(logger, "handle ChunkPingResp: get result failed. fd="<<fd);
 		return false;
 	}
-	if(kvdata->GetValue(KEY_CHUNK_RSP_RESULT, ping_resp.chunk_id) == false)
+	if(kvdata->GetValue(KEY_CHUNK_RSP_CHUNK_ID, ping_resp.chunk_id) == false)
 	{
 		LOG_ERROR(logger, "handle ChunkPingResp: get chunk_id failed. fd="<<fd);
 		return false;
@@ -145,6 +149,11 @@ void ChunkInterface::OnSocketFinished(int32_t fd)
 	//Socket::Close(fd);
 
 	return ;
+}
+
+IProtocolFactory* ChunkInterface::GetProtocolFactory()
+{
+	return m_ProtocolFactory;
 }
 
 bool ChunkInterface::AcceptNewConnect(int32_t fd)

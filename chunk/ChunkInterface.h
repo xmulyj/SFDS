@@ -72,6 +72,8 @@ public:
 
 	//重新基类方法
 	bool AcceptNewConnect(int32_t fd);
+
+	IProtocolFactory* GetProtocolFactory();
 private:
 	//时钟超时
 	void OnTimeout(uint64_t nowtime_ms);
