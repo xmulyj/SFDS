@@ -72,6 +72,11 @@ bool Master::Start()
 
 	//循环处理请求
 	IEventServer *event_server = GetEventServer();
+	if(event_server->AddTimer(this, 1000, true) == false)
+		assert(0);
+	LOG_INFO(logger, "add master timer succ. timeout_ms=1000");
+
+	LOG_INFO(logger, "master goto run_loop...");
 	event_server->RunLoop();
 
 	return true;
@@ -167,6 +172,13 @@ void Master::OnSocketFinished(int32_t fd)
 IProtocolFactory* Master::GetProtocolFactory()
 {
 	return m_ProtocolFactory;
+}
+
+void Master::OnTimeout(uint64_t nowtime_ms)
+{
+	//检查超时的任务
+	LOG_DEBUG(logger, "master timer timeout,check all task...");
+	RemoveSavingTaskTimeout();
 }
 
 ////////////////////////////////////////////////////

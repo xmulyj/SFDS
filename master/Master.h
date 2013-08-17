@@ -37,7 +37,7 @@ public:
 //    TransHandler    : TransHandler
 //    ListenHandler   : ListenHandler
 //    IMemory         : SystemMemory
-class Master:public IAppInterface
+class Master:public IAppInterface, public IEventHandler
 {
 public:
 	Master();
@@ -88,6 +88,15 @@ public:
 
 	//获取ProtocolFactory的实例
 	IProtocolFactory* GetProtocolFactory();
+private:
+	//时钟超时
+	void OnTimeout(uint64_t nowtime_ms);
+	//错误事件
+	void OnEventError(int32_t fd, uint64_t nowtime_ms, ERROR_CODE code){}
+	//可读事件
+	ERROR_CODE OnEventRead(int32_t fd, uint64_t nowtime_ms){return ECODE_SUCC;}
+	//可写事件
+	ERROR_CODE OnEventWrite(int32_t fd, uint64_t nowtime_ms){return ECODE_SUCC;}
 private:
 	//数据库
 	string m_DBIP;
