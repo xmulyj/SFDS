@@ -49,7 +49,7 @@ public:
 class ChunkPingRsp
 {
 public:
-	int32_t result;   //0成功,1失败
+	int16_t result;   //0成功,1失败
 	string chunk_id;
 };
 
@@ -68,7 +68,7 @@ class FileInfoReq
 {
 public:
 	string fid;                //文件的fid
-	int32_t query_chunkpath;   //如果没有文件信息,是否请求分配chunk;0:不请求;1:请求
+	int16_t query_chunkpath;   //如果没有文件信息,是否请求分配chunk;0:不请求;1:请求
 };
 
 //文件信息
@@ -84,7 +84,7 @@ public:
 		RESULT_SUCC         //成功,file_info有效
 	};
 
-	int32_t result;          //文件信息标志
+	int16_t result;          //文件信息标志
 	string fid;              //文件的fid
 	string name;             //文件名
 	uint32_t size;           //文件大小
@@ -105,7 +105,7 @@ public:
 		RESULT_SUCC        //保存成功
 	};
 
-	int32_t result;
+	int16_t result;
 	string fid;
 };
 
@@ -120,7 +120,7 @@ public:
 };
 
 //文件分片
-class File
+class FileData
 {
 public:
 	typedef enum
@@ -130,26 +130,15 @@ public:
 		FLAG_SEG,            //文件分片
 		FLAG_END             //任务结束
 	}FileFlag;
-	void set(FileFlag flag, string &fid, string &name, uint32_t filesize=0, uint32_t offset=0, uint32_t index=0, uint32_t seg_size=0)
-	{
-		this->flag     = flag;
-		this->fid      = fid;
-		this->name     = name;
-		this->filesize = filesize;
-		this->offset   = offset;
-		this->index    = index;
-		this->size     = seg_size;
-		this->data     = NULL;
-	}
 
-	FileFlag flag;           //文件任务标记
+	int16_t flag;           //文件任务标记
 	string fid;              //文件的fid
 	string name;             //文件名
 	uint32_t filesize;       //文件的大小
 	uint32_t offset;         //分片偏移位置
 	uint32_t index;          //分片序号
 	uint32_t size;           //分片大小
-	const char *data;        //分片数据
+	char *data;        //分片数据
 };
 
 class FileSaveResult
@@ -159,11 +148,11 @@ public:
 	{
 		CREATE_FAILED,       //创建失败
 		CREATE_SUCC,         //创建成功
-		SEG_FAILED,          //分片接收成功
-		SEG_SUCC,            //分片接收失败
+		DATA_SAVE_FAILED,    //分片接收成功
+		DATA_SAVE_SUCC,      //分片接收失败
 	}Status;
 
-	Status status;           //状态
+	int16_t status;           //状态
 	string fid;              //fid
 	uint32_t index;          //分片index
 };

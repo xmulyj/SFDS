@@ -14,6 +14,21 @@
 #include "ConfigReader.h"
 using namespace easynet;
 
+#include "Protocol.h"
+
+//正在保存的文件任务
+typedef struct _file_task_
+{
+	int32_t fd;
+	string fid;
+	string name;
+	uint32_t size;
+	char *buf;
+	FileInfo file_info;
+}FileTask;
+typedef map<string, FileTask> FileTaskMap;  //fid-filetask
+
+
 //默认使用以下组件实例:
 //    EventServer     : EventServerEpoll
 //    ProtocolFactory : KVDataProtocolFactory
@@ -84,6 +99,23 @@ private:
 	void OnFileInfoSaveResult(int fd, KVData *kv_data);
 	void OnGetFile(int fd, KVData *kv_data);
 
+//////////////////// file task ////////////////////
+private:
+	//pthread_mutex_t m_filetask_lock;
+	FileTaskMap m_FileTaskMap;
+	//查找文件任务
+	bool FileTaskFind(string &fid);
+	//创建一个文件任务
+	bool FileTaskCreate(int32_t fd, FileData &filedata);
+	//删除一个文件任务
+	void FileTaskDelete(string &fid);
+	//保存文件分片数据
+	bool FileTaskSave(FileData &filedata);
+	//文件已经传送完毕,保存到系统中
+	bool SaveFile(string &fid);
+
+private:
+	void SendFailFileInfoToMaster(string &fid);
 private:
 	DECL_LOGGER(logger);
 };

@@ -40,6 +40,7 @@ const uint16_t KEY_FILEINFO_RSP_CHUNK_IP       = 21;
 const uint16_t KEY_FILEINFO_RSP_CHUNK_PORT     = 22;
 const uint16_t KEY_FILEINFO_RSP_CHUNK_INDEX    = 23;
 const uint16_t KEY_FILEINFO_RSP_CHUNK_OFFSET   = 24;
+const uint16_t KEY_FILEINFO_RSP_FID            = 25;
 
 //FileInfoSave
 const uint16_t KEY_FILEINFO_SAVE_RESULT        = 1;
@@ -55,7 +56,22 @@ const uint16_t KEY_FILEINFO_SAVE_FILE_SIZE     = 9;
 const uint16_t KEY_FILEINFO_SAVE_RSP_RESULT    = 1;
 const uint16_t KEY_FILEINFO_SAVE_RSP_FID       = 2;
 
-//File
+//FileData
+const uint16_t KEY_FILEDATA_FLAG               = 1;
+const uint16_t KEY_FILEDATA_FID                = 2;
+const uint16_t KEY_FILEDATA_FILE_NAME          = 3;
+const uint16_t KEY_FILEDATA_FILE_SIZE          = 4;
+const uint16_t KEY_FILEDATA_INDEX              = 5;
+const uint16_t KEY_FILEDATA_OFFSET             = 6;
+const uint16_t KEY_FILEDATA_SEG_SIZE           = 7;
+const uint16_t KEY_FILEDATA_DATA               = 8;
+const uint16_t KEY_FILEDATA_RESULT             = 9;
+
+//FileDataReq
+const uint16_t KEY_FILEDATA_REQ_FID            = 1;
+const uint16_t KEY_FILEDATA_REQ_INDEX          = 2;
+const uint16_t KEY_FILEDATA_REQ_OFFSET         = 3;
+const uint16_t KEY_FILEDATA_REQ_SIZE           = 4;
 #endif  //_KEY_DEFIE_H_
 
 

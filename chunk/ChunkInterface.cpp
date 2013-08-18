@@ -101,6 +101,19 @@ bool ChunkInterface::OnReceiveProtocol(int32_t fd, ProtocolContext *context, boo
 	LOG_DEBUG(logger, "receive protocol on fd="<<fd);
 	KVData *kvdata = (KVData*)context->protocol;
 	ChunkPingRsp ping_resp;
+
+	int32_t protocol_type;
+	if(kvdata->GetValue(KEY_PROTOCOL_TYPE, protocol_type) == false)
+	{
+		LOG_ERROR(logger, "get protocol_type failed.");
+		return false;
+	}
+	else if(protocol_type != PROTOCOL_CHUNK_PING_RESP)
+	{
+		LOG_ERROR(logger, "protocol invalid.expect chunkping resp.");
+		return false;
+	}
+
 	if(kvdata->GetValue(KEY_CHUNK_RSP_RESULT, ping_resp.result) == false)
 	{
 		LOG_ERROR(logger, "handle ChunkPingResp: get result failed. fd="<<fd);
@@ -174,7 +187,7 @@ uint32_t header_size = m_ProtocolFactory->HeaderSize();  \
 uint32_t body_size = kvdata.Size();  \
 send_context->CheckSize(header_size+body_size);  \
 m_ProtocolFactory->EncodeHeader(send_context->Buffer, body_size);  \
-send_kvdata.Serialize(send_context->Buffer+header_size);  \
+kvdata.Serialize(send_context->Buffer+header_size);  \
 send_context->Size = header_size+body_size;  \
 }while(0)
 
@@ -210,7 +223,7 @@ void ChunkInterface::OnTimeout(uint64_t nowtime_ms)
 
 	if(!SendProtocol(m_MasterSocket, send_context))
 	{
-		LOG_ERROR(logger, "send chunk_ping to master failed.");
+		LOG_ERROR(logger, "send chunkping to master failed.");
 		DeleteProtocolContext(send_context);
 	}
 	else

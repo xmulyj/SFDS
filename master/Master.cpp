@@ -191,7 +191,7 @@ uint32_t header_size = m_ProtocolFactory->HeaderSize();  \
 uint32_t body_size = kvdata.Size();  \
 send_context->CheckSize(header_size+body_size);  \
 m_ProtocolFactory->EncodeHeader(send_context->Buffer, body_size);  \
-send_kvdata.Serialize(send_context->Buffer+header_size);  \
+kvdata.Serialize(send_context->Buffer+header_size);  \
 send_context->Size = header_size+body_size;  \
 }while(0)
 
@@ -203,6 +203,8 @@ void Master::OnChunkPing(int fd, KVData *kv_data)
 	ChunkPingRsp chunkping_rsp;  //回复包
 
 	chunkping_rsp.result = 0;    //成功
+	chunkping_rsp.chunk_id = "UnKnow";
+
 	if(kv_data->GetValue(KEY_CHUNK_ID, chunkinfo.id) == false)
 	{
 		LOG_ERROR(logger, "OnChunkPing: get chunk_id failed. fd="<<fd);
@@ -232,26 +234,32 @@ void Master::OnChunkPing(int fd, KVData *kv_data)
 	if(chunkping_rsp.result == 0)
 	{
 		LOG_INFO(logger, "OnChunkPing: get chunk info succ. chunk_id="<<chunkinfo.id
-				<<" chunk_ip="<<chunkinfo.ip
-				<<" chunk_port="<<chunkinfo.port
-				<<" chunk_disk_space="<<chunkinfo.disk_space
-				<<" chunk_disk_used="<<chunkinfo.disk_used);
+				<<",chunk_ip="<<chunkinfo.ip
+				<<",chunk_port="<<chunkinfo.port
+				<<",chunk_disk_space="<<chunkinfo.disk_space
+				<<",chunk_disk_used="<<chunkinfo.disk_used
+				<<",fd="<<fd);
 		chunkping_rsp.result = AddChunk(chunkinfo)?0:1;
 		chunkping_rsp.chunk_id = chunkinfo.id;
+	}
+	else
+	{
+		LOG_ERROR(logger, "OnChunkPing: get chunk info failed. fd="<<fd);
 	}
 
 	//发送回复包
 	KVData send_kvdata(true);
+	send_kvdata.SetValue(KEY_PROTOCOL_TYPE, PROTOCOL_CHUNK_PING_RESP);
 	send_kvdata.SetValue(KEY_CHUNK_RSP_RESULT, chunkping_rsp.result);
 	send_kvdata.SetValue(KEY_CHUNK_RSP_CHUNK_ID, chunkping_rsp.chunk_id);
 
 	//序列化数据
 	ProtocolContext *send_context = NULL;
-	SerializeKVData(send_kvdata, send_context, "ChunkResp");
+	SerializeKVData(send_kvdata, send_context, "ChunkPingResp");
 
 	if(SendProtocol(fd, send_context, m_SendTimeout) == false)
 	{
-		LOG_ERROR(logger, "OnChunkPing: send chunk resp failed. chunk_id="<<chunkping_rsp.chunk_id<<" fd="<<fd);
+		LOG_ERROR(logger, "OnChunkPing: send chunkping resp failed. chunk_id="<<chunkping_rsp.chunk_id<<" fd="<<fd);
 		DeleteProtocolContext(send_context);
 	}
 }
@@ -337,6 +345,8 @@ void Master::OnFileInfoReq(int fd, KVData *kv_data)
 	KVData send_kvdata(true);
 	//设置结果
 	send_kvdata.SetValue(KEY_FILEINFO_RSP_RESULT, fileinfo.result);
+	send_kvdata.SetValue(KEY_FILEINFO_RSP_FID, fileinfo.fid);
+
 	//设置文件名和大小
 	if(fileinfo.result == FileInfo::RESULT_SUCC)
 	{
