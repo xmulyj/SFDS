@@ -5,10 +5,10 @@
  *      Author: LiuYongJin
  */
 #include <string.h>
+#include <stdio.h>
 #include <string>
 using std::string;
-#include "slog.h"
-#include "SFSFile.h"
+#include "SFDSFile.h"
 
 void print_usage()
 {
@@ -25,30 +25,28 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-	SLOG_INIT("./config/slog.config");
-
 	string master_addr="127.0.0.1";
 	int master_port = 3012;
-	SFS::File sfs_file(master_addr, master_port, 2);
+	SFDS::File sfs_file(master_addr, master_port, 2);
 
 	if(strcmp(argv[1], "-i") == 0) //get file info
 	{
 		string fid = argv[2];
 		if(fid.size() != 40)
 		{
-			SLOG_ERROR("fid is invalid.");
+			printf("fid is invalid.\n");
 			return -11;
 		}
 		FileInfo file_info;
 		file_info.result = FileInfo::RESULT_INVALID;
-		if(sfs_file.get_file_info(fid, file_info))
+		if(sfs_file.GetFileInfo(fid, file_info))
 		{
-			SLOG_INFO("get file info succ. filename=%s. fid=%s, size=%d.", file_info.name.c_str(), file_info.fid.c_str(), file_info.size);
+			printf("get file info succ. filename=%s. fid=%s, size=%d\n", file_info.name.c_str(), file_info.fid.c_str(), file_info.size);
 			int i;
-			for(i=0; i<file_info.get_chunkpath_count(); ++i)
+			for(i=0; i<file_info.GetChunkPathCount(); ++i)
 			{
-				ChunkPath &chunk_path = file_info.get_chunkpath(i);
-				SLOG_INFO("chunk_path[%d]: id=%s, ip=%s, port=%d, %d_%d."
+				ChunkPath &chunk_path = file_info.GetChunkPath(i);
+				printf("chunk_path[%d]: id=%s, ip=%s, port=%d, %d_%d\n"
 							, i
 							, chunk_path.id.c_str()
 							, chunk_path.ip.c_str()
@@ -58,21 +56,21 @@ int main(int argc, char* argv[])
 			}
 		}
 		else
-			SLOG_ERROR("get file info failed.fid=%s, result=%d.", fid.c_str(), file_info.result);
+			printf("get file info failed.fid=%s, result=%d\n", fid.c_str(), file_info.result);
 	}
 	else if(strcmp(argv[1], "-s") == 0) //save file
 	{
 		string filename = argv[2];
 		FileInfo file_info;
 		file_info.result = FileInfo::RESULT_INVALID;
-		if(sfs_file.save_file(file_info, filename) && file_info.result==FileInfo::RESULT_SUCC)
+		if(sfs_file.SaveFile(file_info, filename) && file_info.result==FileInfo::RESULT_SUCC)
 		{
-			SLOG_INFO("save file succ. filename=%s. fid=%s, size=%d.", file_info.name.c_str(), file_info.fid.c_str(), file_info.size);
+			printf("save file succ. filename=%s. fid=%s, size=%d\n", file_info.name.c_str(), file_info.fid.c_str(), file_info.size);
 			int i;
-			for(i=0; i<file_info.get_chunkpath_count(); ++i)
+			for(i=0; i<file_info.GetChunkPathCount(); ++i)
 			{
-				ChunkPath &chunk_path = file_info.get_chunkpath(i);
-				SLOG_INFO("chunk_path[%d]: id=%s, ip=%s, port=%d, %d_%d."
+				ChunkPath &chunk_path = file_info.GetChunkPath(i);
+				printf("chunk_path[%d]: id=%s, ip=%s, port=%d, %d_%d.\n"
 							,i
 							,chunk_path.id.c_str()
 							,chunk_path.ip.c_str()
@@ -82,18 +80,17 @@ int main(int argc, char* argv[])
 			}
 		}
 		else
-			SLOG_ERROR("save file failed.filename=%s, result=%d", filename.c_str(), file_info.result);
+			printf("save file failed.filename=%s, result=%d\n", filename.c_str(), file_info.result);
 	}
 	else if(strcmp(argv[1], "-g") == 0 && argc >= 4) //get file
 	{
 		string fid = argv[2];
 		string filename = argv[3];
-		sfs_file.get_file(fid, filename);
+		sfs_file.GetFile(fid, filename);
 	}
 	else
 		print_usage();
 
-	SLOG_UNINIT();
 	return 0;
 }
 

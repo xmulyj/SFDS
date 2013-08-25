@@ -10,6 +10,8 @@
 
 #include "Socket.h"
 #include "ByteBuffer.h"
+#include "KVData.h"
+using namespace easynet;
 
 #include "SFDSProtocolFactory.h"
 #include "Protocol.h"
@@ -43,20 +45,18 @@ private:
 	string m_master_addr;
 	uint32_t    m_master_port;
 	uint32_t    m_n_replica;
-	SFDSProtocolFactory m_protocol_factory;
 private:
-	//查询文件信息, 返回值:false(请求失败), true(请求成功)
-	bool _query_master(ProtocolFileInfoReq *protocol, FileInfo &file_info);
-
 	//获取fid的文件信息
 	//query_chunk:当没有文件信息的时候是否请求分配chunk path
 	//返回值:true(请求成功), false(请求失败)
 	bool _get_file_info(string &fid, bool query_chunk, FileInfo &file_info);
-
-	bool _send_file_to_chunk(string &local_file, string &fid, string &chunk_addr, int chunk_port, FileInfo &file_info);
-	bool _send_file_protocol_to_chunk(TransSocket* trans_socket, ProtocolFile *protocol_store, ByteBuffer *byte_buffer, int fd);
+	bool _send_file_to_chunk(string &local_file, string &fid, string &chunk_addr, int chunk_port, FileInfo &fileinfo);
 	//保存数据到文件
-	bool _save_fileseg_to_file(int fd, FileSeg &file_seg);
+	bool _save_filedata_to_file(int fd, FileData &file_data);
+
+
+	bool SendData(int fd, KVData &kvdata);
+	bool RecvData(int fd, ByteBuffer &byte_buffer, KVData &kvdata);
 private:
 	DECL_LOGGER(logger);
 };
