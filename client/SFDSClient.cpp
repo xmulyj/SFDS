@@ -41,7 +41,7 @@ int main(int argc, char* argv[])
 		file_info.result = FileInfo::RESULT_INVALID;
 		if(sfs_file.GetFileInfo(fid, file_info))
 		{
-			if(file_info.result != 0)
+			if(file_info.result != FileInfo::RESULT_SUCC)
 			{
 				printf("get file info succ. no fileinfo for fid=%s, result=%d.\n", file_info.fid.c_str(), file_info.result);
 			}
