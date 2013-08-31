@@ -172,9 +172,13 @@ IProtocolFactory* ChunkInterface::GetProtocolFactory()
 
 bool ChunkInterface::AcceptNewConnect(int32_t fd)
 {
-	LOG_INFO(logger, "send fd="<<fd<<" to Index="<<m_CurThreadIndex);
-	m_ChunkWorkers[m_CurThreadIndex]->SendMessage(fd);
-	m_CurThreadIndex = (m_CurThreadIndex+1)%2;
+	if(!m_ChunkWorkers[m_CurThreadIndex]->SendMessage(fd))
+	{
+		LOG_ERROR(logger, "send fd="<<fd<<" to Index="<<m_CurThreadIndex<<" failed");
+		return false;
+	}
+	LOG_DEBUG(logger, "send fd="<<fd<<" to Index="<<m_CurThreadIndex<<" succ");
+	m_CurThreadIndex = (m_CurThreadIndex+1)%m_ChunkWorkerNum;
 	return true;
 }
 

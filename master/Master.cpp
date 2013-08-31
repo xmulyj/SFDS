@@ -72,8 +72,8 @@ bool Master::Start()
 
 	//循环处理请求
 	IEventServer *event_server = GetEventServer();
-	if(event_server->AddTimer(this, 1000, true) == false)
-		assert(0);
+	//if(event_server->AddTimer(this, 1000, true) == false)
+	//	assert(0);
 	LOG_INFO(logger, "add master timer succ. timeout_ms=1000");
 
 	LOG_INFO(logger, "master goto run_loop...");
@@ -283,9 +283,11 @@ void Master::OnFileInfoReq(int fd, KVData *kv_data)
 		fileinfo_req.query_chunkpath = 0;
 	}
 
+	fileinfo.size = 0;
+	fileinfo.fid = fileinfo_req.fid;
 	if(fileinfo.result == (int32_t)FileInfo::RESULT_SUCC)
 	{
-		LOG_DEBUG(logger,"OnFileInfoReq: fid="<<fileinfo_req.fid<<" query_chunkpath"<<fileinfo_req.query_chunkpath<<" fd="<<fd);
+		LOG_DEBUG(logger,"OnFileInfoReq: fid="<<fileinfo_req.fid<<" query_chunkpath="<<fileinfo_req.query_chunkpath<<" fd="<<fd);
 		if(GetFileInfo(fileinfo_req.fid, fileinfo)) //存在
 		{
 			LOG_DEBUG(logger,"OnFileInfoReq: get fileinfo succ: fid="<<fileinfo.fid<<" size="<<fileinfo.size);
@@ -324,7 +326,7 @@ void Master::OnFileInfoReq(int fd, KVData *kv_data)
 				fileinfo.AddChunkPath(chunk_path);
 
 				AddSavingTask(fileinfo.fid);
-				LOG_DEBUG(logger, "OnFileInfoReq: dispatch chunk[id="<<chunk_info.id<<" ip="<<chunk_info.ip<<" port="<<chunk_info.port<<"] for fid="<<fileinfo.fid);
+				LOG_DEBUG(logger, "OnFileInfoReq: dispatch chunk[id="<<chunk_info.id<<",ip="<<chunk_info.ip<<",port="<<chunk_info.port<<"] for fid="<<fileinfo.fid);
 
 				fileinfo.result = FileInfo::RESULT_CHUNK;
 			}
@@ -344,6 +346,7 @@ void Master::OnFileInfoReq(int fd, KVData *kv_data)
 	//发送回复包
 	KVData send_kvdata(true);
 	//设置结果
+	send_kvdata.SetValue(KEY_PROTOCOL_TYPE, PROTOCOL_FILE_INFO);
 	send_kvdata.SetValue(KEY_FILEINFO_RSP_RESULT, fileinfo.result);
 	send_kvdata.SetValue(KEY_FILEINFO_RSP_FID, fileinfo.fid);
 
@@ -462,11 +465,11 @@ void Master::OnFileInfoSave(int fd, KVData *kv_data)
 		else
 		{
 			LOG_DEBUG(logger, "OnFileInfo: recv fileinfo succ. fid="<<fileinfo.fid
-					<<" chunk_id"<<chunk_path.id
-					<<" chunk_ip"<<chunk_path.ip
-					<<" chunk_port"<<chunk_path.port
-					<<" chunk_index"<<chunk_path.index
-					<<" chunk_offset"<<chunk_path.offset);
+					<<",chunk_id="<<chunk_path.id
+					<<",chunk_ip="<<chunk_path.ip
+					<<",chunk_port="<<chunk_path.port
+					<<",chunk_index="<<chunk_path.index
+					<<",chunk_offset="<<chunk_path.offset);
 			fileinfo.AddChunkPath(chunk_path);
 
 			//添加到cache
@@ -490,6 +493,7 @@ void Master::OnFileInfoSave(int fd, KVData *kv_data)
 
 	//发送回复包
 	KVData send_kvdata(true);
+	send_kvdata.SetValue(KEY_PROTOCOL_TYPE, PROTOCOL_FILE_INFO_SAVE_RESULT);
 	send_kvdata.SetValue(KEY_FILEINFO_SAVE_RSP_RESULT, saveresult.result);
 	send_kvdata.SetValue(KEY_FILEINFO_SAVE_RSP_FID, saveresult.fid);
 

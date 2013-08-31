@@ -49,6 +49,9 @@ bool ChunkWorker::Start()
 	assert(m_MasterPort > 0);
 	m_MasterSocket = -1;
 
+	//监听消息通知
+	ListenMessage();
+
 	IEventServer *event_server = GetEventServer();
 	event_server->RunLoop();
 	return true;
@@ -158,8 +161,18 @@ IProtocolFactory* ChunkWorker::GetProtocolFactory()
 int32_t ChunkWorker::GetMasterConnect()
 {
 	if(m_MasterSocket == -1)
+	{
 		m_MasterSocket = Socket::Connect(m_MasterPort, m_MasterIP.c_str(), false);
-	assert(m_MasterSocket != -1);
+		assert(m_MasterSocket != -1);
+		IEventServer *event_server = GetEventServer();
+		IEventHandler *event_handler = GetTransHandler();
+		if(!event_server->SetEvent(m_MasterSocket, ET_PER_RD, event_handler, -1))
+		{
+			LOG_ERROR(logger, "add master fd to event_server failed.");
+			assert(0);
+		}
+	}
+
 	return m_MasterSocket;
 }
 
@@ -195,7 +208,7 @@ void ChunkWorker::OnSaveFile(int fd, KVData *kv_data)
 		case FileData::FLAG_START:  //请求开始传输文件
 		{
 			LOG_INFO(logger, "receive FileData: flag="<<file_data.flag
-						<<",fid="<<file_data.fid
+						<<"(data_start),fid="<<file_data.fid
 						<<",name="<<file_data.name
 						<<",filesize="<<file_data.filesize);
 
@@ -250,7 +263,7 @@ void ChunkWorker::OnSaveFile(int fd, KVData *kv_data)
 			}
 
 			LOG_INFO(logger, "receive FileData: flag="<<file_data.flag
-						<<",fid="<<file_data.fid
+						<<"(data_seg),fid="<<file_data.fid
 						<<",name="<<file_data.name
 						<<",filesize="<<file_data.filesize
 						<<",index="<<file_data.index
@@ -279,7 +292,8 @@ void ChunkWorker::OnSaveFile(int fd, KVData *kv_data)
 		}
 		case FileData::FLAG_END:  //已经结束
 		{
-			LOG_INFO(logger, "client send file finished. fid="<<file_data.fid);
+			LOG_INFO(logger, "receive FileData: flag="<<file_data.flag
+						<<"(data_end).client send file finished. fid="<<file_data.fid);
 			if(SaveFile(file_data.fid)) //保存成功,等待master回复保存结果
 				return ;
 
@@ -411,7 +425,16 @@ void ChunkWorker::OnGetFile(int fd, KVData *kv_data)
 		kvdata.SetValue(KEY_FILEDATA_SEG_SIZE, file_data.size);
 
 		ProtocolContext *send_context = NULL;
-		SerializeKVData(kvdata, send_context, "FileData_To_Client");
+		send_context = NewProtocolContext();
+		assert(send_context != NULL);
+		send_context->type = DTYPE_BIN;
+		send_context->Info = "FileData_To_Client";
+
+		uint32_t header_size = m_ProtocolFactory->HeaderSize();
+		uint32_t body_size = kvdata.Size();
+		send_context->CheckSize(header_size+body_size);
+		kvdata.Serialize(send_context->Buffer+header_size);
+		send_context->Size = header_size+body_size;
 
 		//读文件数据
 		send_context->CheckSize(KVData::SizeBytes(file_data.size));
@@ -427,6 +450,8 @@ void ChunkWorker::OnGetFile(int fd, KVData *kv_data)
 		}
 		send_context->Size += KVData::EndWrite(kv_buffer, file_data.size);
 
+		//编译头部
+		m_ProtocolFactory->EncodeHeader(send_context->Buffer, send_context->Size-header_size);
 		if(SendProtocol(fd, send_context) == false)
 		{
 			LOG_ERROR(logger, "send file_data failed.fid="<<file_data.fid);
@@ -473,7 +498,7 @@ void ChunkWorker::OnFileInfoSaveResult(int fd, KVData *kv_data)
 		LOG_ERROR(logger, "OnFileInfoSaveResult: get fid failed. fd="<<fd);
 		return ;
 	}
-	LOG_INFO(logger, "OnFileInfoSaveResult: save result="<<saveresult.result<<" fid="<<saveresult.fid);
+	LOG_INFO(logger, "OnFileInfoSaveResult: save result="<<saveresult.result<<",fid="<<saveresult.fid);
 
 	//pthread_mutex_lock(&m_filetask_lock);
 	FileTaskMap::iterator it = m_FileTaskMap.find(saveresult.fid);
@@ -483,17 +508,18 @@ void ChunkWorker::OnFileInfoSaveResult(int fd, KVData *kv_data)
 		FileInfo &file_info = file_task.file_info;
 
 		KVData kvdata(true);
+		kvdata.SetValue(KEY_PROTOCOL_TYPE, PROTOCOL_FILE_INFO);
 		kvdata.SetValue(KEY_FILEINFO_RSP_FILE_NAME, file_info.name);
 		kvdata.SetValue(KEY_FILEINFO_RSP_FILE_SIZE, file_info.size);
+		kvdata.SetValue(KEY_FILEINFO_RSP_FID, file_info.fid);
 
+		KVData sub_kvdata(true);
 		if(saveresult.result == FileInfoSaveResult::RESULT_SUCC)  //master保存成功
 		{
 			file_info.result = FileInfo::RESULT_SUCC;
 			kvdata.SetValue(KEY_FILEINFO_RSP_RESULT, file_info.result);
-			kvdata.SetValue(KEY_FILEINFO_RSP_RESULT, file_info.result);
 			kvdata.SetValue(KEY_FILEINFO_RSP_CHUNK_NUM, 1);
 
-			KVData sub_kvdata(true);
 			ChunkPath &chunk_path = file_info.GetChunkPath(0);
 			LOG_DEBUG(logger, "chunk[0]:id="<<chunk_path.id
 						<<",ip="<<chunk_path.ip
@@ -573,7 +599,7 @@ bool ChunkWorker::FileTaskCreate(int32_t fd, FileData &filedata)
 		{
 			result = true;
 			m_FileTaskMap.insert(std::make_pair(file_task.fid, file_task));  //保存任务
-			LOG_DEBUG(logger, "create file task succ.fid="<<filedata.fid
+			LOG_DEBUG(logger, "insert new file task to map succ.fid="<<filedata.fid
 						<<",file_name="<<filedata.name
 						<<",file_size="<<filedata.filesize
 						<<",seg_size="<<filedata.size);
@@ -649,7 +675,6 @@ bool ChunkWorker::SaveFile(string &fid)
 
 		KVData kvdata(true);
 		kvdata.SetValue(KEY_PROTOCOL_TYPE, PROTOCOL_FILE_INFO);    //协议类型
-		kvdata.SetValue(KEY_FILEINFO_SAVE_RESULT, fileinfo.result);
 		kvdata.SetValue(KEY_FILEINFO_SAVE_FID, fileinfo.fid);
 		kvdata.SetValue(KEY_FILEINFO_SAVE_FILE_NAME, fileinfo.name);
 		kvdata.SetValue(KEY_FILEINFO_SAVE_FILE_SIZE, fileinfo.size);
@@ -667,15 +692,14 @@ bool ChunkWorker::SaveFile(string &fid)
 			kvdata.SetValue(KEY_FILEINFO_SAVE_CHUNK_PORT, chunk_path.port);
 			kvdata.SetValue(KEY_FILEINFO_SAVE_CHUNK_INDEX,chunk_path.index);
 			kvdata.SetValue(KEY_FILEINFO_SAVE_CHUNK_OFFSET,chunk_path.offset);
-
-			kvdata.SetValue(KEY_FILEINFO_SAVE_RESULT, fileinfo.result);
 		}
 		else
 		{
 			LOG_ERROR(logger, "save data to file failed. fid="<<fid);
 			fileinfo.result = FileInfo::RESULT_FAILED;
-			kvdata.SetValue(KEY_FILEINFO_SAVE_RESULT, fileinfo.result);
+
 		}
+		kvdata.SetValue(KEY_FILEINFO_SAVE_RESULT, fileinfo.result);
 
 		ProtocolContext *send_context = NULL;
 		SerializeKVData(kvdata, send_context, "FileInfo2Master");

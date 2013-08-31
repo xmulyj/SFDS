@@ -12,9 +12,9 @@ using std::string;
 
 void print_usage()
 {
-	printf("usage:\tsfs -i fid ... [get file info of fid]\n"
-			"\tsfs -s file ... [save file to sfs]\n"
-			"\tsfs -g fid file ...[get file of fid from sfs]\n");
+	printf("usage:\tsfds -i fid ... [get file info of fid]\n"
+			"\tsfds -s file ... [save file to sfs]\n"
+			"\tsfds -g fid file ...[get file of fid from sfs]\n");
 }
 
 int main(int argc, char* argv[])
@@ -41,22 +41,29 @@ int main(int argc, char* argv[])
 		file_info.result = FileInfo::RESULT_INVALID;
 		if(sfs_file.GetFileInfo(fid, file_info))
 		{
-			printf("get file info succ. filename=%s. fid=%s, size=%d\n", file_info.name.c_str(), file_info.fid.c_str(), file_info.size);
-			int i;
-			for(i=0; i<file_info.GetChunkPathCount(); ++i)
+			if(file_info.result != 0)
 			{
-				ChunkPath &chunk_path = file_info.GetChunkPath(i);
-				printf("chunk_path[%d]: id=%s, ip=%s, port=%d, %d_%d\n"
-							, i
-							, chunk_path.id.c_str()
-							, chunk_path.ip.c_str()
-							, chunk_path.port
-							, chunk_path.index
-							, chunk_path.offset);
+				printf("get file info succ. no fileinfo for fid=%s, result=%d.\n", file_info.fid.c_str(), file_info.result);
+			}
+			else
+			{
+				printf("get file info succ. fid=%s, result=%d, size=%d, name=%s.\n", file_info.fid.c_str(), file_info.result, file_info.size, file_info.name.c_str());
+				int i;
+				for(i=0; i<file_info.GetChunkPathCount(); ++i)
+				{
+					ChunkPath &chunk_path = file_info.GetChunkPath(i);
+					printf("chunk_path[%d]: id=%s, ip=%s, port=%d, %d_%d\n"
+								, i
+								, chunk_path.id.c_str()
+								, chunk_path.ip.c_str()
+								, chunk_path.port
+								, chunk_path.index
+								, chunk_path.offset);
+				}
 			}
 		}
 		else
-			printf("get file info failed.fid=%s, result=%d\n", fid.c_str(), file_info.result);
+			printf("get file info failed.fid=%s\n", fid.c_str());
 	}
 	else if(strcmp(argv[1], "-s") == 0) //save file
 	{

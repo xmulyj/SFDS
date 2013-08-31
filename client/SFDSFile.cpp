@@ -150,8 +150,8 @@ bool File::GetFile(string &fid, string &local_file)
 			continue;
 		}
 
-		int fd = open(local_file.c_str(), O_WRONLY|O_CREAT);
-		if(fd == -1)
+		FILE *fd = fopen(local_file.c_str(), "wb");
+		if(fd == NULL)
 		{
 			LOG_ERROR(logger, "open file failed. file="<<local_file<<",errno="<<errno<<","<<strerror(errno));
 			Socket::Close(chunk_fd);
@@ -193,10 +193,22 @@ bool File::GetFile(string &fid, string &local_file)
 				break;
 			}
 
-			kvdata.GetValue(KEY_FILEDATA_FILE_SIZE, file_data.filesize);
-			kvdata.GetValue(KEY_FILEDATA_INDEX, file_data.index);
-			kvdata.GetValue(KEY_FILEDATA_OFFSET, file_data.offset);
-			kvdata.GetValue(KEY_FILEDATA_SEG_SIZE, file_data.size);
+			uint32_t data_len = 0;
+			if(!kvdata.GetValue(KEY_FILEDATA_FILE_SIZE, file_data.filesize)
+				|| !kvdata.GetValue(KEY_FILEDATA_INDEX, file_data.index)
+				|| !kvdata.GetValue(KEY_FILEDATA_OFFSET, file_data.offset)
+				|| !kvdata.GetValue(KEY_FILEDATA_SEG_SIZE, file_data.size)
+				|| !kvdata.GetValue(KEY_FILEDATA_DATA, file_data.data, data_len))
+			{
+				LOG_ERROR(logger, "get param failed from rsp. fid="<<file_info.fid);
+				break;
+			}
+
+			if(data_len != file_data.size)
+			{
+				LOG_ERROR(logger, "data len invalid. seg_size="<<file_data.size<<",recv size="<<data_len<<",fid="<<file_info.fid);
+				break;
+			}
 
 			if(!_save_filedata_to_file(fd, file_data))
 			{
@@ -206,7 +218,7 @@ bool File::GetFile(string &fid, string &local_file)
 		}
 
 		Socket::Close(chunk_fd);
-		close(fd);
+		fclose(fd);
 	}
 
 	return true;
@@ -244,12 +256,12 @@ bool File::_get_file_info(string &fid, bool query_chunk, FileInfo &fileinfo)
 	}
 
 	uint32_t protocol_type;
-	if(!kvdata.GetValue(KEY_PROTOCOL_TYPE, protocol_type) || protocol_type!=KEY_FILEINFO_RSP_RESULT)
+	if(!kvdata.GetValue(KEY_PROTOCOL_TYPE, protocol_type) || protocol_type!=PROTOCOL_FILE_INFO)
 	{
 		Socket::Close(master_fd);
 		return false;
 	}
-	if(!kvdata.GetValue(KEY_PROTOCOL_TYPE, fileinfo.result))
+	if(!kvdata.GetValue(KEY_FILEINFO_RSP_RESULT, fileinfo.result))
 	{
 		Socket::Close(master_fd);
 		return false;
@@ -360,8 +372,8 @@ bool File::_send_file_to_chunk(string &local_file, string &fid, string &chunk_ad
 	FileSaveResult save_result;
 	int32_t protocol_type;
 	if(kvdata.GetValue(KEY_PROTOCOL_TYPE, protocol_type)==false
-		|| kvdata.GetValue(KEY_FILEDATA_RESULT, save_result.status) == false
-		|| kvdata.GetValue(KEY_FILEDATA_FID, save_result.fid))
+		|| kvdata.GetValue(KEY_FILEDATA_RESULT, save_result.status)==false
+		|| kvdata.GetValue(KEY_FILEDATA_FID, save_result.fid)==false)
 	{
 		LOG_ERROR(logger, "get protocol data failed.");
 		fclose(fd);
@@ -427,6 +439,42 @@ bool File::_send_file_to_chunk(string &local_file, string &fid, string &chunk_ad
 			return false;
 		}
 
+		if(RecvData(chunk_fd, byte_buffer, kvdata) == false)
+		{
+			LOG_ERROR(logger, "recv file data rsp failed.");
+			fclose(fd);
+			Socket::Close(chunk_fd);
+			return false;
+		}
+
+		if(!kvdata.GetValue(KEY_PROTOCOL_TYPE, protocol_type) || protocol_type!=PROTOCOL_FILE_SAVE_RESULT)
+		{
+			LOG_ERROR(logger, "recv file data rsp protocol_type invalid.");
+			fclose(fd);
+			Socket::Close(chunk_fd);
+			return false;
+		}
+
+		FileSaveResult save_result;
+		if(!kvdata.GetValue(KEY_FILEDATA_RESULT, save_result.status)
+			|| !kvdata.GetValue(KEY_FILEDATA_FID, save_result.fid)
+			|| !kvdata.GetValue(KEY_FILEDATA_INDEX, save_result.index))
+		{
+			LOG_ERROR(logger, "file data rsp:get param failed.");
+			fclose(fd);
+			Socket::Close(chunk_fd);
+			return false;
+		}
+
+		if(save_result.status==FileSaveResult::DATA_SAVE_FAILED || save_result.fid!=file_data.fid)
+		{
+			LOG_ERROR(logger, "save file data failed or fid invalid.cur fid="<<file_data.fid<<",recv fid="save_result.fid);
+			fclose(fd);
+			Socket::Close(chunk_fd);
+			return false;
+		}
+
+		LOG_DEBUG(logger, "save file_data_seg succ. fid="<<file_data.fid<<",index="<<file_data.index);
 		++file_data.index;
 		file_data.offset += seg_size;
 	}
@@ -455,13 +503,13 @@ bool File::_send_file_to_chunk(string &local_file, string &fid, string &chunk_ad
 		return false;
 	}
 
-	if(!kvdata.GetValue(KEY_PROTOCOL_TYPE, protocol_type) || protocol_type!=KEY_FILEINFO_RSP_RESULT)
+	if(!kvdata.GetValue(KEY_PROTOCOL_TYPE, protocol_type) || protocol_type!=PROTOCOL_FILE_INFO)
 	{
 		LOG_ERROR(logger, "recv file info from chunk failed. invalid protocol_type");
 		Socket::Close(chunk_fd);
 		return false;
 	}
-	if(!kvdata.GetValue(KEY_PROTOCOL_TYPE, fileinfo.result))
+	if(!kvdata.GetValue(KEY_FILEINFO_RSP_RESULT, fileinfo.result))
 	{
 		LOG_ERROR(logger, "recv file info from chunk failed. get result failed");
 		Socket::Close(chunk_fd);
@@ -509,10 +557,10 @@ bool File::_send_file_to_chunk(string &local_file, string &fid, string &chunk_ad
 	return true;
 }
 
-bool File::_save_filedata_to_file(int fd, FileData &file_data)
+bool File::_save_filedata_to_file(FILE *fd, FileData &file_data)
 {
-	lseek(fd, file_data.offset, SEEK_SET);
-	ssize_t size = write(fd, file_data.data, file_data.size);
+	fseek(fd, file_data.offset, SEEK_SET);
+	ssize_t size = fwrite(file_data.data, 1, file_data.size, fd);
 	return size == file_data.size;
 }
 
@@ -545,6 +593,7 @@ bool File::RecvData(int fd, ByteBuffer &byte_buffer, KVData &kvdata)
 		return false;
 
 	if(Socket::RecvAll(fd, byte_buffer.Buffer+header_size, body_size) != body_size)
-			return false;
+		return false;
+	byte_buffer.Size = header_size+body_size;
 	return kvdata.UnSerialize(byte_buffer.Buffer+header_size, body_size);
 }

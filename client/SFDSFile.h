@@ -52,7 +52,7 @@ private:
 	bool _get_file_info(string &fid, bool query_chunk, FileInfo &file_info);
 	bool _send_file_to_chunk(string &local_file, string &fid, string &chunk_addr, int chunk_port, FileInfo &fileinfo);
 	//保存数据到文件
-	bool _save_filedata_to_file(int fd, FileData &file_data);
+	bool _save_filedata_to_file(FILE *fd, FileData &file_data);
 
 
 	bool SendData(int fd, KVData &kvdata);

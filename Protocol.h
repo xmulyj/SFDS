@@ -101,8 +101,8 @@ class FileInfoSaveResult
 public:
 	enum
 	{
-		RESULT_FAILED =0,  //保存失败
-		RESULT_SUCC        //保存成功
+		RESULT_SUCC =0,  //保存成功
+		RESULT_FAILED    //保存失败
 	};
 
 	int16_t result;
