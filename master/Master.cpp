@@ -72,8 +72,8 @@ bool Master::Start()
 
 	//循环处理请求
 	IEventServer *event_server = GetEventServer();
-	//if(event_server->AddTimer(this, 1000, true) == false)
-	//	assert(0);
+	if(event_server->AddTimer(this, 1000, true) == false)
+		assert(0);
 	LOG_INFO(logger, "add master timer succ. timeout_ms=1000");
 
 	LOG_INFO(logger, "master goto run_loop...");
