@@ -1,6 +1,6 @@
 INCS=-I/usr/include/easynet -I../
 LIBS=-leasynet -lpthread -llog4cplus -lcrypto #-lssl
-FLAGS=-g
+FLAGS=-g -D__LOG4CPLUS__
 
 all:lib sfds
 

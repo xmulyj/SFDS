@@ -127,7 +127,7 @@ bool File::GetFile(string &fid, string &local_file)
 		int32_t chunk_fd = Socket::Connect(chunkpath.port, chunkpath.ip.c_str());
 		if(chunk_fd < 0)
 		{
-			LOG_ERROR(logger, "can't connect chunk:ip="<<chunk_path.ip<<",port="<<chunk_path.port);
+			LOG_ERROR(logger, "can't connect chunk:ip="<<chunkpath.ip<<",port="<<chunkpath.port);
 			continue;
 		}
 
@@ -398,7 +398,6 @@ bool File::_send_file_to_chunk(string &local_file, string &fid, string &chunk_ad
 		return false;
 	}
 
-	uint32_t seg_offset = 0;
 	int seg_size = 0;
 	//2 发送分片
 	file_data.index = 0;
@@ -408,14 +407,17 @@ bool File::_send_file_to_chunk(string &local_file, string &fid, string &chunk_ad
 	char buffer[5000];
 	while(file_data.offset < filesize)
 	{
-		seg_size = filesize-seg_offset;
+		seg_size = filesize-file_data.offset;
 		if(seg_size > READ_SIZE)
 			seg_size = READ_SIZE;
+
 		file_data.size = seg_size;
 		file_data.flag = FileData::FLAG_SEG;
-		if(fread(buffer, 1, file_data.size, fd) != file_data.size)
+
+		int32_t read_size = fread(buffer, 1, file_data.size, fd);
+		if(read_size != file_data.size)
 		{
-			LOG_ERROR(logger, "read file error. error="<<strerror(errno));
+			LOG_ERROR(logger, "read file error. read_size="<<read_size<<",expect_size="<<file_data.size<<",cur_offset="<<file_data.offset<<",filesize="<<filesize<<",error="<<strerror(errno));
 			fclose(fd);
 			Socket::Close(chunk_fd);
 			return false;
@@ -469,7 +471,7 @@ bool File::_send_file_to_chunk(string &local_file, string &fid, string &chunk_ad
 
 		if(save_result.status==FileSaveResult::DATA_SAVE_FAILED || save_result.fid!=file_data.fid)
 		{
-			LOG_ERROR(logger, "save file data failed or fid invalid.cur fid="<<file_data.fid<<",recv fid="save_result.fid);
+			LOG_ERROR(logger, "save file data failed or fid invalid.cur fid="<<file_data.fid<<",recv fid="<<save_result.fid);
 			fclose(fd);
 			Socket::Close(chunk_fd);
 			return false;

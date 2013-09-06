@@ -25,6 +25,8 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
+	INIT_LOGGER("log4cplus.conf");
+
 	string master_addr="127.0.0.1";
 	int master_port = 3012;
 	SFDS::File sfs_file(master_addr, master_port, 2);

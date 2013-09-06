@@ -143,6 +143,8 @@ void ChunkWorker::OnSocketFinished(int32_t fd)
 	//close it?
 	Socket::Close(fd);
 
+	if(fd == m_MasterSocket)
+		m_MasterSocket = -1;
 	return ;
 }
 
